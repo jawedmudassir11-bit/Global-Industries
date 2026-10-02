@@ -669,7 +669,7 @@
         <button class="tab-btn" onclick="switchTab('monthly-view', this)">📊 Monthly</button>
         <button class="tab-btn" onclick="switchTab('worker-view', this)">👷 Directory</button>
         <button class="tab-btn" onclick="switchTab('slips-view', this)">🧾 Slips</button>
-        <button class="tab-btn report-tab" onclick="switchTab('one-day-report-view', this)">🗓️️ One Day Report</button>
+        <button class="tab-btn report-tab" onclick="switchTab('one-day-report-view', this)">🗓 One Day Report</button>
         <button class="tab-btn report-tab" onclick="switchTab('report-view', this)">📈 Custom Report</button>
         <button class="tab-btn" onclick="switchTab('ai-view', this)" style="background: linear-gradient(135deg, #3B82F6, #9333EA); color: white;">🤖 AI Site Assistant</button>
       </div>
@@ -924,7 +924,7 @@
   </div> <!-- End #main-app -->
 <script>
     /* =========================================
-       0. THREE.JS GREEN WARP-STAR INTRO & WHITE GRATICULE GLOBE
+       0. ENHANCED THREE.JS ATMOSPHERIC GLOBE & HYPERDRIVE INTRO
        ========================================= */
     const introContainer = document.getElementById('intro-container');
     const mainApp = document.getElementById('main-app');
@@ -936,30 +936,32 @@
     renderer.setSize(window.innerWidth, window.innerHeight);
     renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
 
-    const particlesCount = 3000;
+    const particlesCount = 3500;
     const particlesGeometry = new THREE.BufferGeometry();
     const posArray = new Float32Array(particlesCount * 3);
     const velocityArray = new Float32Array(particlesCount * 3);
     const colorsArray = new Float32Array(particlesCount * 3);
     
+    const cyanCol = new THREE.Color(0x38BDF8);
     const greenCol = new THREE.Color(0x10B981);
     const whiteCol = new THREE.Color(0xFFFFFF);
 
     for(let i = 0; i < particlesCount * 3; i += 3) { 
-        posArray[i] = (Math.random() - 0.5) * 250; 
-        posArray[i+1] = (Math.random() - 0.5) * 250;
-        posArray[i+2] = -120 - Math.random() * 180;
+        posArray[i] = (Math.random() - 0.5) * 300; 
+        posArray[i+1] = (Math.random() - 0.5) * 300;
+        posArray[i+2] = -150 - Math.random() * 200;
         
         velocityArray[i] = 0; velocityArray[i+1] = 0;
-        velocityArray[i+2] = 0.9 + Math.random() * 2.0;
+        velocityArray[i+2] = 1.0 + Math.random() * 2.5;
 
-        const col = Math.random() > 0.3 ? greenCol : whiteCol;
+        const rand = Math.random();
+        const col = rand > 0.6 ? cyanCol : (rand > 0.3 ? greenCol : whiteCol);
         colorsArray[i] = col.r; colorsArray[i+1] = col.g; colorsArray[i+2] = col.b;
     }
     
     particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
     particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
-    const particlesMaterial = new THREE.PointsMaterial({ size: 0.3, vertexColors: true, transparent: true, opacity: 0.85, blending: THREE.AdditiveBlending });
+    const particlesMaterial = new THREE.PointsMaterial({ size: 0.35, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
     const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
     scene.add(particlesMesh);
 
@@ -967,22 +969,36 @@
     const globeGroup = new THREE.Group();
     scene.add(globeGroup);
 
+    // Core Globe Mesh
     const globeGeo = new THREE.SphereGeometry(globeRadius, 48, 48);
-    const globeMat = new THREE.MeshPhongMaterial({ color: 0x0B1B2B, emissive: 0x050D14, specular: 0x10B981, shininess: 35, wireframe: false });
+    const globeMat = new THREE.MeshPhongMaterial({ color: 0x0B1B2B, emissive: 0x050D14, specular: 0x10B981, shininess: 40 });
     const globeMesh = new THREE.Mesh(globeGeo, globeMat);
     globeGroup.add(globeMesh);
 
-    const wireGeo = new THREE.SphereGeometry(globeRadius * 1.002, 24, 24);
-    const wireMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.25 });
+    // Graticule Wireframe Lines
+    const wireGeo = new THREE.SphereGeometry(globeRadius * 1.002, 28, 28);
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x38BDF8, wireframe: true, transparent: true, opacity: 0.3 });
     const wireMesh = new THREE.Mesh(wireGeo, wireMat);
     globeGroup.add(wireMesh);
 
+    // Atmospheric Glow Shell (Fresnel Halo)
+    const atmosGeo = new THREE.SphereGeometry(globeRadius * 1.12, 36, 36);
+    const atmosMat = new THREE.MeshBasicMaterial({ color: 0x38BDF8, transparent: true, opacity: 0.12, blending: THREE.AdditiveBlending, side: THREE.BackSide });
+    const atmosMesh = new THREE.Mesh(atmosGeo, atmosMat);
+    globeGroup.add(atmosMesh);
+
+    // Independent Cloud Shell Layer
+    const cloudGeo = new THREE.SphereGeometry(globeRadius * 1.03, 36, 36);
+    const cloudMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, transparent: true, opacity: 0.15, wireframe: true });
+    const cloudMesh = new THREE.Mesh(cloudGeo, cloudMat);
+    globeGroup.add(cloudMesh);
+
     globeGroup.position.set(0, 0, -25);
 
-    const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
     scene.add(ambientLight);
-    const dirLight = new THREE.DirectionalLight(0x10B981, 1.8);
-    dirLight.position.set(20, 20, 10);
+    const dirLight = new THREE.DirectionalLight(0x38BDF8, 2.0);
+    dirLight.position.set(25, 25, 15);
     scene.add(dirLight);
 
     camera.position.z = 8;
@@ -996,7 +1012,7 @@
         
         const positions = particlesMesh.geometry.attributes.position.array;
         const globePos = globeGroup.position;
-        const safeRadiusSq = (globeRadius * 1.3) * (globeRadius * 1.3);
+        const safeRadiusSq = (globeRadius * 1.4) * (globeRadius * 1.4);
         
         for(let i = 0; i < particlesCount * 3; i += 3) {
             positions[i+2] += velocityArray[i+2] * warpSpeedMultiplier;
@@ -1008,21 +1024,22 @@
             
             if (distSq < safeRadiusSq) {
                 const dist = Math.sqrt(distSq);
-                const push = 1.1;
+                const push = 1.2;
                 positions[i] += (dx / dist) * push;
                 positions[i+1] += (dy / dist) * push;
             }
 
-            if(positions[i+2] > 12) {
-                positions[i] = (Math.random() - 0.5) * 250; 
-                positions[i+1] = (Math.random() - 0.5) * 250;
-                positions[i+2] = -200 - Math.random() * 40; 
+            if(positions[i+2] > 15) {
+                positions[i] = (Math.random() - 0.5) * 300; 
+                positions[i+1] = (Math.random() - 0.5) * 300;
+                positions[i+2] = -250 - Math.random() * 50; 
             }
         }
         particlesMesh.geometry.attributes.position.needsUpdate = true;
         
-        globeGroup.rotation.y += 0.0035 * warpSpeedMultiplier;
-        globeGroup.rotation.x += 0.0012 * warpSpeedMultiplier;
+        globeGroup.rotation.y += 0.003 * warpSpeedMultiplier;
+        globeGroup.rotation.x += 0.001 * warpSpeedMultiplier;
+        cloudMesh.rotation.y += 0.0045 * warpSpeedMultiplier; // Clouds spin slightly faster
 
         renderer.render(scene, camera);
     }
@@ -1038,12 +1055,12 @@
                 introContainer.style.display = 'none';
                 mainApp.style.display = 'flex';
                 
-                particlesGeometry.dispose();
-                particlesMaterial.dispose();
-                globeGeo.dispose();
-                globeMat.dispose();
-                wireGeo.dispose();
-                wireMat.dispose();
+                // Memory Cleanup (Prevents battery drain / WebGL context issues)
+                particlesGeometry.dispose(); particlesMaterial.dispose();
+                globeGeo.dispose(); globeMat.dispose();
+                wireGeo.dispose(); wireMat.dispose();
+                atmosGeo.dispose(); atmosMat.dispose();
+                cloudGeo.dispose(); cloudMat.dispose();
                 renderer.dispose();
 
                 gsap.to(mainApp, { opacity: 1, duration: 0.8, ease: "power2.out" });
@@ -1051,18 +1068,20 @@
             }
         });
 
-        tl.to(document.querySelector('.intro-logo-wrapper'), { opacity: 0, scale: 1.4, duration: 0.4, ease: "power2.in" })
+        // Cinematic Hyperdrive Sequence
+        tl.to(document.querySelector('.intro-logo-wrapper'), { opacity: 0, scale: 1.5, duration: 0.4, ease: "power2.in" })
           .to(document.querySelector('.enter-instruction'), { opacity: 0, duration: 0.2 }, "<")
-          .to(globeGroup.rotation, { y: Math.PI * 3.5, x: Math.PI * 1.2, duration: 2.0, ease: "power3.inOut" }, "<")
-          .to(globeGroup.position, { z: -10, duration: 2.0, ease: "power3.inOut" }, "<")
-          .to(camera.position, { z: -3, duration: 2.0, ease: "power3.inOut" }, "<")
+          .to(globeGroup.rotation, { y: Math.PI * 4.0, x: Math.PI * 1.5, duration: 2.2, ease: "power3.inOut" }, "<")
+          .to(globeGroup.position, { z: -8, duration: 2.2, ease: "power3.inOut" }, "<")
+          .to(camera.position, { z: -2, duration: 2.2, ease: "power3.inOut" }, "<")
           .to(window, {
-              duration: 2.0,
+              duration: 2.2,
               onUpdate: function() {
-                  warpSpeedMultiplier = 1.0 + (this.progress() * 9.0);
+                  warpSpeedMultiplier = 1.0 + (this.progress() * 12.0); // Accelerate stars
+                  particlesMaterial.size = 0.35 + (this.progress() * 0.8); // Elongate particle effect
               }
           }, "<")
-          .to(introContainer, { opacity: 0, duration: 0.5 }, "-=0.4");
+          .to(introContainer, { opacity: 0, duration: 0.4 }, "-=0.3");
     });
 
     window.addEventListener('resize', () => {
@@ -2099,7 +2118,6 @@ window.setDailyDuty = function(wId, d, v, type) {
       c.innerHTML = htmlBuffer;
     }
 
-    // FIX: Properly check if duty is explicitly stored (including 0 for absent), leaving unrecorded days empty.
     function renderMonthlyTable() {
       const h1 = document.querySelector("#monthly-table thead tr:first-child"), h2 = document.getElementById("sub-headers-row"), tb = document.getElementById("monthly-table-body"), tf = document.getElementById("monthly-table-total");
       h1.innerHTML = `<th rowspan="2" class="sticky-col">NAME</th><th rowspan="2">TRADE</th>`; h2.innerHTML = "";
