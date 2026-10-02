@@ -669,7 +669,7 @@
         <button class="tab-btn" onclick="switchTab('monthly-view', this)">📊 Monthly</button>
         <button class="tab-btn" onclick="switchTab('worker-view', this)">👷 Directory</button>
         <button class="tab-btn" onclick="switchTab('slips-view', this)">🧾 Slips</button>
-        <button class="tab-btn report-tab" onclick="switchTab('one-day-report-view', this)">🗓️ One Day Report</button>
+        <button class="tab-btn report-tab" onclick="switchTab('one-day-report-view', this)">🗓️️ One Day Report</button>
         <button class="tab-btn report-tab" onclick="switchTab('report-view', this)">📈 Custom Report</button>
         <button class="tab-btn" onclick="switchTab('ai-view', this)" style="background: linear-gradient(135deg, #3B82F6, #9333EA); color: white;">🤖 AI Site Assistant</button>
       </div>
@@ -692,7 +692,7 @@
            <button class="btn btn-primary" style="flex:1;" onclick="exportDatabase()">💾 Backup DB</button>
         </div>
       </div>
-<!-- TAB 1: DAILY VIEW -->
+      <!-- TAB 1: DAILY VIEW -->
       <div id="daily-view" class="tab-content active">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
            <h3 style="color:var(--primary); font-size:20px;">Labour Attendance</h3>
@@ -740,7 +740,7 @@
           <h4>Site Weather & Rain Logs</h4>
           <div style="display:flex; gap:16px; margin-bottom:16px;">
             <select id="dpr-weather-select" onchange="checkWeatherCondition()" onclick="requireAuthClick(this)" style="flex:1;">
-              <option>☀️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
+              <option>☀️ Sunny / Clear</option><option>☁ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
             </select>
           </div>
           <div id="rain-settings" style="display:none; gap:16px; background:rgba(59,130,246,0.08); padding:16px; border-radius:12px; border:1px solid #BFDBFE;">
@@ -972,7 +972,6 @@
     const globeMesh = new THREE.Mesh(globeGeo, globeMat);
     globeGroup.add(globeMesh);
 
-    // Crisp white longitudinal and latitudinal graticule lines
     const wireGeo = new THREE.SphereGeometry(globeRadius * 1.002, 24, 24);
     const wireMat = new THREE.MeshBasicMaterial({ color: 0xFFFFFF, wireframe: true, transparent: true, opacity: 0.25 });
     const wireMesh = new THREE.Mesh(wireGeo, wireMat);
@@ -1038,6 +1037,15 @@
                 introActive = false;
                 introContainer.style.display = 'none';
                 mainApp.style.display = 'flex';
+                
+                particlesGeometry.dispose();
+                particlesMaterial.dispose();
+                globeGeo.dispose();
+                globeMat.dispose();
+                wireGeo.dispose();
+                wireMat.dispose();
+                renderer.dispose();
+
                 gsap.to(mainApp, { opacity: 1, duration: 0.8, ease: "power2.out" });
                 gsap.to('.stat-card', { opacity: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "back.out(1.7)", delay: 0.2 });
             }
@@ -1093,6 +1101,13 @@
       }, 1000);
     }
 
+    document.addEventListener('click', (e) => {
+      const dropdown = document.getElementById('site-dropdown');
+      if(dropdown && dropdown.classList.contains('active') && !e.target.closest('.site-selector-wrap')) {
+          dropdown.classList.remove('active');
+      }
+    });
+
     function init() {
       initLiveClock();
       const savedTheme = localStorage.getItem('gi_theme') || 'light';
@@ -1105,10 +1120,6 @@
       generateMonthOptions(); populateDaySelector();
       loadSitesFromCloud(); loadLocalState(); syncSiteDataFirebase(); 
       updateAuthUI(); startAnalyticsEngine();
-      
-      document.addEventListener('click', (e) => {
-        if(!e.target.closest('.site-selector-wrap')) document.getElementById('site-dropdown').classList.remove('active');
-      });
 
       document.getElementById('admin-pwd').addEventListener('input', function(e) {
           if (this.value === '6767') {
@@ -1304,6 +1315,7 @@
     };
 
     function isUserTyping() { const el = document.activeElement; return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
+    
     window.resolveConflict = function(action) {
       document.getElementById('conflict-overlay').style.display = 'none';
       if(action === 'reload') { appState = sanitizeState(pendingCloudState); renderAll(); } 
@@ -1364,7 +1376,14 @@
         if(isUserTyping() && newData) {
            if(JSON.stringify(appState) !== JSON.stringify(sanitizeState(newData))) { pendingCloudState = newData; document.getElementById('conflict-overlay').style.display = 'flex'; return; }
         }
-        appState = sanitizeState(newData); localStorage.setItem(getStorageKey(), JSON.stringify(appState)); 
+        appState = sanitizeState(newData); 
+        
+        try {
+            localStorage.setItem(getStorageKey(), JSON.stringify(appState)); 
+        } catch (e) {
+            console.warn("LocalStorage Quota Exceeded. Relying on Cloud sync.");
+        }
+        
         if(!isUserTyping()) { renderAll(); }
       });
     }
@@ -1372,12 +1391,20 @@
     function saveState() {
       if (!currentSite || !currentSubgroup || isMasterRollup) return; 
       appState = sanitizeState(appState);
-      localStorage.setItem(getStorageKey(), JSON.stringify(appState));
+      
+      try {
+          localStorage.setItem(getStorageKey(), JSON.stringify(appState));
+      } catch (e) {
+          console.warn("LocalStorage Quota Exceeded during save. Sending directly to Cloud.");
+      }
+
       isSavingToCloud = true;
       db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState).then(() => { isSavingToCloud = false; });
       totalSyncs++; updateDashboard(); updateAdvancedAnalytics();
     }
+    
     function forceSyncProcess() { saveState(); showToast("Force Synced with Cloud"); }
+    
     function wipeZoneData() {
       const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
       if(!canManage || isMasterRollup) return;
@@ -1395,7 +1422,7 @@
       else {
         siteStructure.forEach(site => {
           const header = document.createElement('div'); header.className = 'dropdown-site-header';
-          let acts = canManage ? `<div style="display:flex; gap:6px;"><span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span><span class="action-btn-sm" style="color:red;" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑️️</span></div>` : '';
+          let acts = canManage ? `<div style="display:flex; gap:6px;"><span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span><span class="action-btn-sm" style="color:red;" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑</span></div>` : '';
           header.innerHTML = `<div class="site-title-text" style="cursor:pointer;" onclick="selectSiteSubgroup('${site.id}', 'ALL_GROUPS', '${site.name}', 'Master Roll-Up')">🏢 ${site.name}</div>${acts}`;
           dd.appendChild(header);
           if(site.subgroups) {
@@ -1461,6 +1488,7 @@
 
     function triggerRename(subId) { document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = subId; openSiteManager('rename'); }
     function triggerRenameSite(siteId) { document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = siteId; openSiteManager('rename_site'); }
+    
     function triggerDelete(subId) { 
       document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = subId; 
       if(confirm("Delete this group permanently?")) { 
@@ -1474,6 +1502,7 @@
         }
       } 
     }
+    
     function triggerDeleteSite(siteId) {
       document.getElementById('site-dropdown').classList.remove('active'); 
       if(confirm("DANGER: Are you sure you want to completely delete this ENTIRE SITE?")) { 
@@ -1532,11 +1561,9 @@
     function getWorkerAttendanceRecord(wId, sDay) {
       const mKey = getAttendanceMonthKey();
       if (!appState.attendance) appState.attendance = {}; if (!appState.attendance[mKey]) appState.attendance[mKey] = {}; if (!appState.attendance[mKey][wId]) appState.attendance[mKey][wId] = {};
-      return appState.attendance[mKey][wId][sDay] || { duty: 0, ot: 0, adv: 0, locked: false, graceChances: 2 };
+      return appState.attendance[mKey][wId][sDay] || { duty: null, ot: 0, adv: 0, locked: false, graceChances: 2 };
     }
 
-    // Attendance validation rule: Supervisor / Incharge can edit multiple times for today's date.
-    // If past date, apply 2-chance grace rule. Future dates locked.
     function checkAttendanceEditable(sDay) {
       if (userRole !== 'supervisor' && userRole !== 'incharge' && userRole !== 'admin') return false;
       const mKey = getAttendanceMonthKey();
@@ -1547,18 +1574,21 @@
       recordDate.setHours(0,0,0,0);
 
       if (recordDate.getTime() === today.getTime()) return true;
-      if (recordDate.getTime() < today.getTime()) return false; // Triggers grace chance check per user
-      return false; // Future is false
+      if (recordDate.getTime() < today.getTime()) return false; 
+      return false; 
     }
 
     function renderDailyView() {
       const sDay = parseInt(document.getElementById("day-select").value);
       const query = (document.getElementById("worker-search-input") ? document.getElementById("worker-search-input").value.toLowerCase().trim() : "");
-      const c = document.getElementById("daily-list-container"); c.innerHTML = "";
+      const c = document.getElementById("daily-list-container");
+      
       if(appState.workers.length === 0) { c.innerHTML = `<div class="empty-state">No workers registered in this group yet.</div>`; return; }
 
       const filteredWorkers = appState.workers.filter(w => w.name.toLowerCase().includes(query) || (w.desig && w.desig.toLowerCase().includes(query)));
       if(filteredWorkers.length === 0) { c.innerHTML = `<div class="empty-state">No matching workers found.</div>`; return; }
+
+      let htmlBuffer = '';
 
       filteredWorkers.forEach((w, i) => {
         const a = getWorkerAttendanceRecord(w.id, sDay);
@@ -1570,7 +1600,6 @@
         } else if (userRole === 'admin') {
             isLocked = false;
         } else if (!isEditableToday) {
-            // Past day logic: check grace chances
             if (a.graceChances <= 0) {
                 isLocked = true;
             }
@@ -1586,27 +1615,35 @@
         const evHViewer = (userRole === 'viewer' || isMasterRollup) ? `requireAuthClick(this)` : evH;
         const evAViewer = (userRole === 'viewer' || isMasterRollup) ? `requireAuthClick(this)` : evA;
 
-        c.innerHTML += `
+        htmlBuffer += `
           <div class="worker-card" style="animation-delay: ${i*0.05}s">
             <div class="worker-card-header"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div style="flex:1;"><div class="worker-name">${w.name}</div><div class="worker-desig">${w.desig}</div></div><div style="font-weight:900; color:var(--secondary);">₹${w.rate}/d</div></div>
-            <div class="duty-selector"><div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evPViewer}">P (1)</div><div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evHViewer}">H (0.5)</div><div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evAViewer}">A (0)</div></div>
+            <div class="duty-selector">
+              <div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evPViewer}">P (1)</div>
+              <div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evHViewer}">H (0.5)</div>
+              <div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evAViewer}">A (0)</div>
+            </div>
             <div style="display:flex; gap:12px; margin-top:6px;">
               <div class="input-box"><span>OT (Hrs)</span><input type="number" step="0.5" value="${a.ot||0}" ${r} onblur="setDailyOT('${w.id}', ${sDay}, this.value)"></div>
               <div class="input-box"><span>Adv (₹)</span><input type="number" step="50" value="${a.adv||''}" ${r} onblur="setDailyAdv('${w.id}', ${sDay}, this.value)"></div>
             </div>
           </div>`;
       });
+      c.innerHTML = htmlBuffer;
     }
 
     function renderKeyPersonView() {
       const sDay = parseInt(document.getElementById("day-select").value);
-      const c = document.getElementById("kp-list-container"); c.innerHTML = ""; const alertBox = document.getElementById("kp-alert");
-      if(!isMasterRollup) { alertBox.style.display = 'block'; return; }
+      const c = document.getElementById("kp-list-container"); 
+      const alertBox = document.getElementById("kp-alert");
+      
+      if(!isMasterRollup) { alertBox.style.display = 'block'; c.innerHTML = ""; return; }
       alertBox.style.display = 'none';
       if(appState.keyPersons.length === 0) { c.innerHTML = `<div class="empty-state">No key personnel registered yet.</div>`; return; }
 
+      let htmlBuffer = "";
       appState.keyPersons.forEach((w, i) => {
-        const a = (appState.kpAttendance[w.id] && appState.kpAttendance[w.id][sDay]) || { duty: 0, locked: false };
+        const a = (appState.kpAttendance[w.id] && appState.kpAttendance[w.id][sDay]) || { duty: null, locked: false };
         const isLocked = userRole === 'viewer'; 
         const lockUI = isLocked ? 'locked' : '';
         const evP = isLocked ? `requireAuthClick(this)` : `setDailyDuty('${w.id}', ${sDay}, 1, 'kp')`;
@@ -1616,17 +1653,21 @@
         const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
         const act = canManage ? `<div style="display:flex; gap:10px; margin-top:10px;"><button class="btn btn-outline btn-small" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'kp')">✏️ Edit</button><button class="btn btn-danger btn-small" style="flex:1;" onclick="deleteWorker('${w.id}', 'kp')">🗑️</button></div>` : '';
 
-        c.innerHTML += `
+        htmlBuffer += `
           <div class="worker-card kp-card" style="animation-delay: ${i*0.05}s; position:relative;">
             <div style="position:absolute; top:-10px; right: 10px; font-size:24px;">⭐</div>
             <div class="worker-card-header"><div class="avatar" style="background: linear-gradient(135deg, #D97706, #F59E0B)">${getInitials(w.name)}</div><div style="flex:1;"><div class="worker-name">${w.name}</div><div class="worker-desig" style="color:#B45309; font-weight:800;">${w.desig}</div></div></div>
-            <div class="duty-selector"><div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evP}">Present</div><div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evH}">Half</div><div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evA}">Absent</div></div>
+            <div class="duty-selector">
+              <div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evP}">Present</div>
+              <div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evH}">Half</div>
+              <div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evA}">Absent</div>
+            </div>
             ${act}
           </div>`;
       });
+      c.innerHTML = htmlBuffer;
     }
-
-    window.setDailyDuty = function(wId, d, v, type) { 
+window.setDailyDuty = function(wId, d, v, type) { 
       if(userRole === 'viewer' || (isMasterRollup && type !== 'kp')) return; 
       if (type === 'kp') {
         if(!appState.kpAttendance[wId]) appState.kpAttendance[wId] = {};
@@ -1642,6 +1683,8 @@
         if (!isEditableToday && userRole !== 'admin') {
            if (existing.graceChances > 0) {
               existing.graceChances--;
+           } else {
+              return showToast('Record Locked (Past Day / Grace exhausted).');
            }
         }
         
@@ -1650,8 +1693,8 @@
       saveState(); if(type==='kp') renderKeyPersonView(); else { renderDailyView(); renderMonthlyTable(); }
     };
     
-    window.setDailyOT = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,adv:0,locked:false,graceChances:2}), ot: parseFloat(v)||0 }; saveState(); };
-    window.setDailyAdv = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,ot:0,locked:false,graceChances:2}), adv: parseFloat(v)||0 }; saveState(); };
+    window.setDailyOT = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:null,adv:0,locked:false,graceChances:2}), ot: parseFloat(v)||0 }; saveState(); };
+    window.setDailyAdv = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:null,ot:0,locked:false,graceChances:2}), adv: parseFloat(v)||0 }; saveState(); };
 
     function markAllWorkersPresent() {
       if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; }
@@ -1665,7 +1708,7 @@
         if(!appState.attendance[mKey][w.id]) appState.attendance[mKey][w.id] = {};
         const existing = appState.attendance[mKey][w.id][sDay] || { ot: 0, adv: 0, graceChances: 2 };
         
-        if (!isEditableToday && userRole !== 'admin' && existing.graceChances <= 0) return; // Skip locked past
+        if (!isEditableToday && userRole !== 'admin' && existing.graceChances <= 0) return; 
         if (!isEditableToday && userRole !== 'admin') existing.graceChances--;
 
         appState.attendance[mKey][w.id][sDay] = { ...existing, duty: 1, locked: false };
@@ -1683,9 +1726,12 @@
       document.getElementById("dpr-work-stopped").value = d.workStop || "No"; checkWeatherCondition(); 
 
       const rC = document.getElementById("dpr-mat-received-list"); rC.innerHTML = "";
-      if (d.matReceived.length === 0) addMaterialRowToDOM("", "", "Kg", 'received'); else d.matReceived.forEach((m, i) => addMaterialRowToDOM(m.item, m.qty, m.unit, 'received', i));
+      const rMats = d.matReceived || [];
+      const cMats = d.matConsumed || [];
+      
+      if (rMats.length === 0) addMaterialRowToDOM("", "", "Kg", 'received'); else rMats.forEach((m) => addMaterialRowToDOM(m.item, m.qty, m.unit, 'received'));
       const cC = document.getElementById("dpr-mat-consumed-list"); cC.innerHTML = "";
-      if (d.matConsumed.length === 0) addMaterialRowToDOM("", "", "Kg", 'consumed'); else d.matConsumed.forEach((m, i) => addMaterialRowToDOM(m.item, m.qty, m.unit, 'consumed', i));
+      if (cMats.length === 0) addMaterialRowToDOM("", "", "Kg", 'consumed'); else cMats.forEach((m) => addMaterialRowToDOM(m.item, m.qty, m.unit, 'consumed'));
       calculateLiveStock();
     }
 
@@ -1765,7 +1811,6 @@
       });
     }
 
-    // AI Site Intelligence & Quantum-Neural Simulator
     function generateAIForecast() {
       const out = document.getElementById('ai-forecast-output');
       const totalWorkers = appState.workers.length;
@@ -1808,7 +1853,6 @@
       }, 1000);
     }
 
-    // Date parsing helper to enforce Local Timezone instead of UTC
     function getLocalDate(dateString) {
         if (!dateString) return new Date();
         const [y, m, d] = dateString.split('-');
@@ -1857,7 +1901,6 @@
             Object.values(allGroups).forEach(group => {
                 if (!group) return;
                 
-                // Attendance Aggregation
                 if (group.attendance && group.workers) {
                     const workersObj = Array.isArray(group.workers) ? group.workers : Object.values(group.workers);
                     Object.entries(group.attendance).forEach(([monthKey, wData]) => {
@@ -1895,7 +1938,6 @@
                     });
                 }
                 
-                // DPR & Materials Aggregation
                 if (group.dpr) {
                     Object.entries(group.dpr).forEach(([dateStr, dData]) => {
                         const [d, m, y] = dateStr.split('-');
@@ -1905,7 +1947,6 @@
                             if (dData.matReceived) { Object.values(dData.matReceived).forEach(mat => { const key = `[IN] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
                             if (dData.matConsumed) { Object.values(dData.matConsumed).forEach(mat => { const key = `[OUT] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
                             
-                            // Capture DPR Work logs
                             dprLogsHtml += `
                                 <div style="background:var(--bg); border:1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
                                    <div style="font-size:12px; font-weight:800; color:var(--primary); margin-bottom: 6px;">📅 Date: ${dateStr} | Weather: ${dData.weather || 'N/A'}</div>
@@ -2044,17 +2085,21 @@
     }
 
     function renderWorkerManagement() {
-      const c = document.getElementById("worker-mgmt-body"); c.innerHTML = "";
+      const c = document.getElementById("worker-mgmt-body");
       const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      let htmlBuffer = "";
+      
       appState.workers.forEach((w) => {
         let tA = appState.advances[w.id] || 0; 
         const mKey = getAttendanceMonthKey(); const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
         for (let d=1; d<=currentMonthDays; d++) { const monthAtt = appState.attendance[mKey] || {}; tA += (monthAtt[w.id] && monthAtt[w.id][d] && monthAtt[w.id][d].adv) || 0; }
         const act = (canManage && !isMasterRollup) ? `<div style="display:flex; gap:10px;"><button class="btn btn-outline" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'worker')">✏️ Edit</button><button class="btn btn-danger" style="flex:1;" onclick="deleteWorker('${w.id}', 'worker')">🗑️</button></div>` : '';
-        c.innerHTML += `<div class="worker-card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div><div style="font-size:16px;font-weight:800;">${w.name}</div><div style="font-size:13px;color:var(--text-muted);">${w.desig}</div></div></div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;"><span>Rate: <b>₹${w.rate}</b></span><span>Adv: <b style="color:var(--danger);">₹${tA}</b></span></div>${act}</div>`;
+        htmlBuffer += `<div class="worker-card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div><div style="font-size:16px;font-weight:800;">${w.name}</div><div style="font-size:13px;color:var(--text-muted);">${w.desig}</div></div></div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;"><span>Rate: <b>₹${w.rate}</b></span><span>Adv: <b style="color:var(--danger);">₹${tA}</b></span></div>${act}</div>`;
       });
+      c.innerHTML = htmlBuffer;
     }
 
+    // FIX: Properly check if duty is explicitly stored (including 0 for absent), leaving unrecorded days empty.
     function renderMonthlyTable() {
       const h1 = document.querySelector("#monthly-table thead tr:first-child"), h2 = document.getElementById("sub-headers-row"), tb = document.getElementById("monthly-table-body"), tf = document.getElementById("monthly-table-total");
       h1.innerHTML = `<th rowspan="2" class="sticky-col">NAME</th><th rowspan="2">TRADE</th>`; h2.innerHTML = "";
@@ -2064,16 +2109,18 @@
 
       for (let d=1; d<=currentMonthDays; d++) { const th=document.createElement("th"); th.colSpan=2; th.textContent=d; h1.appendChild(th); h2.innerHTML+=`<th class="tier2">D</th><th class="tier2">OT</th>`; }
       h1.innerHTML += `<th colspan="2" class="summary-th">TOTAL</th><th rowspan="2" class="summary-th">RATE</th><th rowspan="2" class="summary-th">AMOUNT</th><th rowspan="2" class="summary-th">ADVANCE</th><th rowspan="2" class="summary-th">BALANCE</th>`; h2.innerHTML += `<th class="tier2">DUTY</th><th class="tier2">OT</th>`;
-      tb.innerHTML = "";
+      
       if(appState.workers.length === 0) { tb.innerHTML = `<tr><td colspan="70" class="empty-state">No workers in this group.</td></tr>`; tf.innerHTML = ""; return; }
 
       let gD=0, gO=0, gAm=0, gAd=0, gB=0; let dD=Array(currentMonthDays+1).fill(0), dO=Array(currentMonthDays+1).fill(0);
-      
+      let htmlBuffer = "";
+
       appState.workers.forEach(w => {
         let tD=0, tO=0, tDA=0, c="";
         for (let d=1; d<=currentMonthDays; d++) {
           const monthAtt = appState.attendance[mKey] || {};
-          const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; 
+          const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty: null, ot:0, adv:0}; 
+          
           tD+=(r.duty||0); tO+=(r.ot||0); tDA+=(r.adv||0); dD[d]+=(r.duty||0); dO[d]+=(r.ot||0);
           
           const isEditable = checkAttendanceEditable(d);
@@ -2081,11 +2128,20 @@
           
           const p1 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyDuty('${w.id}', ${d}, parseFloat(this.value)||0, 'worker')"` : `readonly onclick="requireAuthClick(this)"`;
           const p2 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyOT('${w.id}', ${d}, this.value)"` : `readonly onclick="requireAuthClick(this)"`;
-          c += `<td><input class="tbl-input" type="number" step="0.5" min="0" max="1" value="${r.duty||''}" ${p1}></td><td><input class="tbl-input" type="number" step="0.5" min="0" value="${r.ot||''}" ${p2}></td>`;
+          
+          let formattedDuty = '';
+          if (r.duty !== null && r.duty !== undefined) {
+              formattedDuty = String(r.duty);
+          }
+
+          c += `<td><input class="tbl-input" type="number" step="0.5" min="0" max="1" value="${formattedDuty}" ${p1}></td><td><input class="tbl-input" type="number" step="0.5" min="0" value="${r.ot||''}" ${p2}></td>`;
         }
+        
         const rt=w.rate||0, am=(tD*rt)+(tO*(rt/8)), tAd=(appState.advances[w.id]||0)+tDA, bl=am-tAd; gD+=tD; gO+=tO; gAm+=am; gAd+=tAd; gB+=bl;
-        const tr = document.createElement("tr"); tr.innerHTML=`<td class="sticky-col text-left"><b>${w.name}</b></td><td class="text-left">${w.desig}</td>${c}<td style="font-weight:bold; color:var(--primary);">${tD.toFixed(1)}</td><td style="font-weight:bold; color:var(--secondary);">${tO.toFixed(1)}</td><td class="text-right">₹${rt}</td><td class="text-right" style="font-weight:bold;">₹${am.toFixed(0)}</td><td class="text-right" style="color:var(--danger); font-weight:700;">₹${tAd.toFixed(0)}</td><td class="text-right" style="font-weight:bold; color:${bl>=0?'var(--primary)':'var(--danger)'}">₹${bl.toFixed(0)}</td>`; tb.appendChild(tr);
+        htmlBuffer += `<tr><td class="sticky-col text-left"><b>${w.name}</b></td><td class="text-left">${w.desig}</td>${c}<td style="font-weight:bold; color:var(--primary);">${tD.toFixed(1)}</td><td style="font-weight:bold; color:var(--secondary);">${tO.toFixed(1)}</td><td class="text-right">₹${rt}</td><td class="text-right" style="font-weight:bold;">₹${am.toFixed(0)}</td><td class="text-right" style="color:var(--danger); font-weight:700;">₹${tAd.toFixed(0)}</td><td class="text-right" style="font-weight:bold; color:${bl>=0?'var(--primary)':'var(--danger)'}">₹${bl.toFixed(0)}</td></tr>`;
       });
+      
+      tb.innerHTML = htmlBuffer;
       let dc = ""; for (let d=1; d<=currentMonthDays; d++) dc += `<td>${dD[d]||'-'}</td><td>${dO[d]||'-'}</td>`;
       tf.innerHTML = `<td colspan="2" class="sticky-col" style="text-align:center;">GRAND TOTAL</td>${dc}<td>${gD.toFixed(1)}</td><td>${gO.toFixed(1)}</td><td>-</td><td class="text-right">₹${gAm.toFixed(0)}</td><td class="text-right">₹${gAd.toFixed(0)}</td><td class="text-right" style="font-weight:800;">₹${gB.toFixed(0)}</td>`;
     }
@@ -2140,6 +2196,84 @@
 
       const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
       XLSX.utils.book_append_sheet(wb, ws, "Attendance"); XLSX.writeFile(wb, `GI_Attendance_${sL}.xlsx`); showToast("Excel downloaded!");
+    }
+
+    function populateSlipWorkerSelect() {
+        const select = document.getElementById("slip-worker-select");
+        if(!select) return;
+        select.innerHTML = '<option value="">-- Select Worker --</option>';
+        appState.workers.forEach(w => {
+            select.innerHTML += `<option value="${w.id}">${w.name} (${w.desig})</option>`;
+        });
+    }
+
+    function renderWageSlip() {
+        const wId = document.getElementById("slip-worker-select").value;
+        const container = document.getElementById("wage-slip-display");
+        if(!wId) { container.innerHTML = ''; return; }
+        
+        const w = appState.workers.find(x => x.id === wId);
+        if(!w) return;
+
+        const theme = document.getElementById("slip-theme-select").value;
+        const mKey = getAttendanceMonthKey();
+        const monthAtt = appState.attendance[mKey] || {};
+        const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
+        
+        let tD=0, tO=0, tA=0;
+        for(let d=1; d<=currentMonthDays; d++) { 
+            const r = monthAtt[wId] && monthAtt[wId][d] ? monthAtt[wId][d] : {duty: null, ot:0, adv:0}; 
+            tD += (r.duty||0); tO += (r.ot||0); tA += (r.adv||0); 
+        }
+        
+        const rt = w.rate||0;
+        const gross = (tD * rt) + (tO * (rt/8));
+        const totalAdv = (appState.advances[w.id] || 0) + tA;
+        const netPay = gross - totalAdv;
+
+        const monthName = document.getElementById("month-select").options[document.getElementById("month-select").selectedIndex].text;
+
+        let themeBg = '#ffffff', themeCol = '#102A43', themeBorder = '#e2e8f0';
+        if(theme === 'theme-navy') { themeBg = '#f8fafc'; themeCol = '#0f172a'; themeBorder = '#94a3b8'; }
+        if(theme === 'theme-slate') { themeBg = '#f1f5f9'; themeCol = '#334155'; themeBorder = '#cbd5e1'; }
+        if(theme === 'theme-amber') { themeBg = '#fffbeb'; themeCol = '#92400e'; themeBorder = '#fcd34d'; }
+
+        container.innerHTML = `
+            <div id="slip-print-area" style="background:${themeBg}; color:${themeCol}; padding: 30px; border: 1px solid ${themeBorder}; border-radius: 8px; max-width: 600px; margin: 0 auto; font-family: sans-serif;">
+                <h2 style="text-align:center; border-bottom: 2px solid ${themeBorder}; padding-bottom: 10px; margin-bottom: 20px;">Global Industries</h2>
+                <h3 style="text-align:center; margin-bottom: 20px;">Wage Slip - ${monthName}</h3>
+                <div style="display:flex; justify-content:space-between; margin-bottom: 10px;">
+                    <strong>Name:</strong> <span>${w.name}</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
+                    <strong>Trade:</strong> <span>${w.desig}</span>
+                </div>
+                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Rate/Day</td><td style="text-align:right;">₹${rt}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Total Days Present</td><td style="text-align:right;">${tD.toFixed(1)}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Total Overtime</td><td style="text-align:right;">${tO.toFixed(1)} hrs</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Gross Earnings</td><td style="text-align:right; font-weight:bold;">₹${gross.toFixed(0)}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; color:var(--danger);">Total Advance Deduction</td><td style="text-align:right; color:var(--danger);">₹${totalAdv.toFixed(0)}</td></tr>
+                    <tr style="border-bottom: 2px solid ${themeBorder};"><td style="padding:12px 0; font-size:18px; font-weight:bold;">Net Payable</td><td style="text-align:right; font-size:18px; font-weight:bold; color:var(--primary);">₹${netPay.toFixed(0)}</td></tr>
+                </table>
+                <div style="text-align:center; font-size: 12px; margin-top: 40px; color: #64748b;">System Generated Slip - Global Industries Management Portal</div>
+            </div>
+        `;
+    }
+
+    function downloadSlipAsPDF(elementId, filename) {
+        const el = document.getElementById(elementId);
+        if(!el) return showToast("No slip to download.");
+        
+        const opt = { 
+            margin: 10, 
+            filename: `${filename}.pdf`, 
+            image: { type: 'jpeg', quality: 0.98 }, 
+            html2canvas: { scale: 2 }, 
+            jsPDF: { unit: 'mm', format: 'a5', orientation: 'portrait' } 
+        };
+        html2pdf().from(el).set(opt).save(); 
+        showToast("PDF exported successfully!");
     }
 
     window.onload = init;
