@@ -669,6 +669,7 @@
         <button class="tab-btn" onclick="switchTab('monthly-view', this)">📊 Monthly</button>
         <button class="tab-btn" onclick="switchTab('worker-view', this)">👷 Directory</button>
         <button class="tab-btn" onclick="switchTab('slips-view', this)">🧾 Slips</button>
+        <button class="tab-btn report-tab" onclick="switchTab('one-day-report-view', this)">🗓️ One Day Report</button>
         <button class="tab-btn report-tab" onclick="switchTab('report-view', this)">📈 Custom Report</button>
         <button class="tab-btn" onclick="switchTab('ai-view', this)" style="background: linear-gradient(135deg, #3B82F6, #9333EA); color: white;">🤖 AI Site Assistant</button>
       </div>
@@ -706,7 +707,7 @@
             <span class="search-icon">🔍</span>
             <input type="text" id="worker-search-input" placeholder="Search worker name or trade..." oninput="renderDailyView()">
           </div>
-          <button class="quick-action-btn" id="btn-mark-all" onclick="markAllWorkersPresent()">✅ Mark All Present</button>
+          <button class="quick-action-btn" id="btn-mark-all" onclick="markAllWorkersPresent()" style="padding: 10px 15px; border-radius: 12px; background: var(--success); color: white; border: none; font-weight: bold; cursor: pointer;">✅ Mark All Present</button>
         </div>
 
         <div class="worker-daily-list" id="daily-list-container"></div>
@@ -825,14 +826,36 @@
             </select>
             <div style="display:flex; gap:8px;">
               <button class="btn btn-outline" style="width:auto; padding:12px 16px;" onclick="window.print()">🖨️ Print</button>
-              <button class="btn btn-primary" style="width:auto; padding:12px 16px;" onclick="downloadSlipAsPDF()">📄 PDF</button>
+              <button class="btn btn-primary" style="width:auto; padding:12px 16px;" onclick="downloadSlipAsPDF('slip-print-area', 'Wage_Slip')">📄 PDF</button>
             </div>
           </div>
           <div id="wage-slip-display" style="margin-top:20px;"></div>
         </div>
       </div>
 
-      <!-- TAB 8: CUSTOM DATE-RANGE REPORT -->
+      <!-- TAB 8: ONE DAY REPORT (NEW) -->
+      <div id="one-day-report-view" class="tab-content">
+        <div class="dpr-section">
+          <h3 style="color:var(--primary); font-size:20px; margin-bottom: 12px;">🗓️ One Day Master Report</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom: 20px;">Select a specific date to view all attendance, net pay, weather, and material usage for that exact day.</p>
+          
+          <div style="display:flex; gap:16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="flex:1; min-width: 200px; background: var(--bg); padding: 12px; border-radius: 12px; border: 1px solid var(--border);">
+              <label style="font-size:12px; font-weight:800; color:var(--text-muted);">Select Date</label>
+              <input type="date" id="single-report-date" style="margin-top:6px; background: var(--card-bg);">
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; margin-bottom: 20px; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="generateReport('single')" style="background:#0284C7; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Day Report</button>
+            <button class="btn btn-success" onclick="exportCustomReportExcel('single')" style="flex:1; display:none;" id="btn-rep-excel-single">📊 Export Excel</button>
+            <button class="btn btn-primary" onclick="exportCustomReportPDF('single-report-container', 'One_Day_Report')" style="flex:1; display:none;" id="btn-rep-pdf-single" style="background:#2563EB;">📄 Export PDF</button>
+          </div>
+          
+          <div id="single-report-results" style="margin-top: 24px; display: none;"></div>
+        </div>
+      </div>
+
+      <!-- TAB 9: CUSTOM DATE-RANGE REPORT -->
       <div id="report-view" class="tab-content">
         <div class="dpr-section">
           <h3 style="color:var(--primary); font-size:20px; margin-bottom: 12px;">📈 Custom Date-Range Report</h3>
@@ -849,9 +872,9 @@
             </div>
           </div>
           <div style="display:flex; gap:12px; margin-bottom: 20px; flex-wrap:wrap;">
-            <button class="btn btn-primary" onclick="generateCustomReport()" style="background:#9333EA; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Master Report</button>
-            <button class="btn btn-success" onclick="exportCustomReportExcel()" style="flex:1; display:none;" id="btn-rep-excel">📊 Export Excel</button>
-            <button class="btn btn-primary" onclick="exportCustomReportPDF()" style="flex:1; display:none;" id="btn-rep-pdf" style="background:#2563EB;">📄 Export PDF</button>
+            <button class="btn btn-primary" onclick="generateReport('range')" style="background:#9333EA; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Master Report</button>
+            <button class="btn btn-success" onclick="exportCustomReportExcel('range')" style="flex:1; display:none;" id="btn-rep-excel">📊 Export Excel</button>
+            <button class="btn btn-primary" onclick="exportCustomReportPDF('custom-report-container', 'Custom_Range_Report')" style="flex:1; display:none;" id="btn-rep-pdf" style="background:#2563EB;">📄 Export PDF</button>
             <button class="btn btn-whatsapp" onclick="exportCustomReportWhatsApp()" style="flex:1; display:none;" id="btn-rep-wa">📲 WhatsApp</button>
           </div>
           
@@ -859,7 +882,7 @@
         </div>
       </div>
 
-      <!-- TAB 9: AI SITE ASSISTANT & PREDICTIVE FORECAST -->
+      <!-- TAB 10: AI SITE ASSISTANT & PREDICTIVE FORECAST -->
       <div id="ai-view" class="tab-content">
         <div class="dpr-section" style="border-left: 6px solid #3B82F6;">
           <h3 style="color:var(--primary); font-size:20px; margin-bottom: 8px;">🤖 AI Site Intelligence & Quantum-Neural Simulator</h3>
@@ -1372,7 +1395,7 @@
       else {
         siteStructure.forEach(site => {
           const header = document.createElement('div'); header.className = 'dropdown-site-header';
-          let acts = canManage ? `<div style="display:flex; gap:6px;"><span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span><span class="action-btn-sm" style="color:red;" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑️</span></div>` : '';
+          let acts = canManage ? `<div style="display:flex; gap:6px;"><span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span><span class="action-btn-sm" style="color:red;" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑️️</span></div>` : '';
           header.innerHTML = `<div class="site-title-text" style="cursor:pointer;" onclick="selectSiteSubgroup('${site.id}', 'ALL_GROUPS', '${site.name}', 'Master Roll-Up')">🏢 ${site.name}</div>${acts}`;
           dd.appendChild(header);
           if(site.subgroups) {
@@ -1524,7 +1547,7 @@
       recordDate.setHours(0,0,0,0);
 
       if (recordDate.getTime() === today.getTime()) return true;
-      if (recordDate.getTime() < today.getTime()) return false; // Triggers grace chance check
+      if (recordDate.getTime() < today.getTime()) return false; // Triggers grace chance check per user
       return false; // Future is false
     }
 
@@ -1785,18 +1808,40 @@
       }, 1000);
     }
 
-    let lastReportData = null;
-    function generateCustomReport() {
-        if (!currentSite) return alert("Select a site first.");
-        const startDateStr = document.getElementById('report-start-date').value;
-        const endDateStr = document.getElementById('report-end-date').value;
-        const startDate = new Date(startDateStr);
-        const endDate = new Date(endDateStr);
-        
-        if (isNaN(startDate) || isNaN(endDate)) return alert("Please select valid From and To dates.");
-        if (startDate > endDate) return alert("From Date must be before To Date.");
+    // Date parsing helper to enforce Local Timezone instead of UTC
+    function getLocalDate(dateString) {
+        if (!dateString) return new Date();
+        const [y, m, d] = dateString.split('-');
+        return new Date(y, m - 1, d);
+    }
 
-        const resDiv = document.getElementById('report-results');
+    let lastReportData = null;
+    function generateReport(type) {
+        if (!currentSite) return alert("Select a site first.");
+        
+        let startDate, endDate, startDateStr, endDateStr, resDiv;
+        
+        if (type === 'single') {
+            startDateStr = document.getElementById('single-report-date').value;
+            if (!startDateStr) return alert("Please select a date.");
+            startDate = getLocalDate(startDateStr);
+            endDate = getLocalDate(startDateStr);
+            resDiv = document.getElementById('single-report-results');
+            document.getElementById('btn-rep-excel-single').style.display = 'none';
+            document.getElementById('btn-rep-pdf-single').style.display = 'none';
+        } else {
+            startDateStr = document.getElementById('report-start-date').value;
+            endDateStr = document.getElementById('report-end-date').value;
+            if (!startDateStr || !endDateStr) return alert("Please select valid From and To dates.");
+            startDate = getLocalDate(startDateStr);
+            endDate = getLocalDate(endDateStr);
+            if (startDate > endDate) return alert("From Date must be before To Date.");
+            resDiv = document.getElementById('report-results');
+            document.getElementById('btn-rep-excel').style.display = 'none';
+            document.getElementById('btn-rep-pdf').style.display = 'none';
+            document.getElementById('btn-rep-wa').style.display = 'none';
+        }
+
         resDiv.innerHTML = `<div style="text-align:center; padding: 20px;">Fetching global site data and itemizing presence table...</div>`;
         resDiv.style.display = 'block';
 
@@ -1807,10 +1852,12 @@
             let tPresent = 0, tAbsent = 0, tOT = 0, tGross = 0, tAdv = 0;
             let materials = {};
             let itemizedPresence = {};
+            let dprLogsHtml = "";
 
             Object.values(allGroups).forEach(group => {
                 if (!group) return;
                 
+                // Attendance Aggregation
                 if (group.attendance && group.workers) {
                     const workersObj = Array.isArray(group.workers) ? group.workers : Object.values(group.workers);
                     Object.entries(group.attendance).forEach(([monthKey, wData]) => {
@@ -1848,19 +1895,30 @@
                     });
                 }
                 
+                // DPR & Materials Aggregation
                 if (group.dpr) {
                     Object.entries(group.dpr).forEach(([dateStr, dData]) => {
                         const [d, m, y] = dateStr.split('-');
                         const recordDate = new Date(y, m - 1, d);
+                        
                         if (recordDate >= startDate && recordDate <= endDate) {
                             if (dData.matReceived) { Object.values(dData.matReceived).forEach(mat => { const key = `[IN] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
                             if (dData.matConsumed) { Object.values(dData.matConsumed).forEach(mat => { const key = `[OUT] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
+                            
+                            // Capture DPR Work logs
+                            dprLogsHtml += `
+                                <div style="background:var(--bg); border:1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
+                                   <div style="font-size:12px; font-weight:800; color:var(--primary); margin-bottom: 6px;">📅 Date: ${dateStr} | Weather: ${dData.weather || 'N/A'}</div>
+                                   <div style="font-size:13px; line-height:1.5;">${dData.work || '<span style="color:var(--text-muted); font-style:italic;">No work details logged for this day.</span>'}</div>
+                                   ${dData.workStop === 'Yes' ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:6px;">⚠️ Work Stopped due to weather (${dData.rainStart} to${dData.rainEnd})</div>` : ''}
+                                </div>
+                            `;
                         }
                     });
                 }
             });
 
-            lastReportData = { startDate: startDateStr, endDate: endDateStr, tPresent, tAbsent, tOT, tGross, tAdv, materials, itemizedPresence };
+            lastReportData = { startDate: startDate.toLocaleDateString(), endDate: endDate.toLocaleDateString(), tPresent, tAbsent, tOT, tGross, tAdv, materials, itemizedPresence };
 
             let matHtml = "";
             Object.keys(materials).forEach(k => {
@@ -1868,6 +1926,7 @@
                 matHtml += `<div style="display:flex; justify-content:space-between; padding: 10px; border-bottom: 1px solid var(--border);"><span style="font-weight: 700; color: ${color};">${k}</span><span style="font-weight: 900; font-size:16px;">${materials[k]}</span></div>`;
             });
             if (!matHtml) matHtml = `<div style="padding:10px; color:var(--text-muted); font-size: 13px;">No materials logged in this timeframe.</div>`;
+            if (!dprLogsHtml) dprLogsHtml = `<div style="padding:10px; color:var(--text-muted); font-size: 13px; text-align:center;">No DPR logs found for this timeframe.</div>`;
 
             let tableRows = "";
             Object.values(itemizedPresence).forEach(wp => {
@@ -1877,9 +1936,12 @@
             });
             if(!tableRows) tableRows = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No attendance recorded in this date range.</td></tr>`;
 
+            const containerId = type === 'single' ? 'single-report-container' : 'custom-report-container';
+            const titleText = type === 'single' ? `One Day Report: ${startDate.toLocaleDateString()}` : `Master Report: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}`;
+
             resDiv.innerHTML = `
-                <div style="background: var(--card-bg); backdrop-filter: var(--glass-blur); border: 2px solid var(--border); border-radius: 12px; padding: 20px;" id="custom-report-container">
-                    <h4 style="color:var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 8px;">Master Report: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}</h4>
+                <div style="background: var(--card-bg); backdrop-filter: var(--glass-blur); border: 2px solid var(--border); border-radius: 12px; padding: 20px;" id="${containerId}">
+                    <h4 style="color:var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 8px;">${titleText}</h4>
                     <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
                         <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">TOTAL PRESENT DAYS</div><div style="font-size:20px; font-weight:900; color:var(--success);">${tPresent.toFixed(1)}</div></div>
                         <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">TOTAL ABSENT DAYS</div><div style="font-size:20px; font-weight:900; color:var(--danger);">${tAbsent}</div></div>
@@ -1888,37 +1950,46 @@
                     </div>
                     
                     <h5 style="color:var(--primary); font-size:15px; margin-bottom: 10px;">Itemized Workforce Presence & Earnings</h5>
-                    <div class="table-container" style="margin-bottom: 20px; max-height: 250px; overflow-y:auto;">
+                    <div class="table-container" style="margin-bottom: 24px; max-height: 250px; overflow-y:auto;">
                         <table>
                             <thead><tr><th style="text-align:left;">Name</th><th style="text-align:left;">Trade</th><th>Present Days</th><th>Overtime</th><th>Net Earned</th></tr></thead>
                             <tbody>${tableRows}</tbody>
                         </table>
                     </div>
 
+                    <h5 style="color:var(--primary); font-size:15px; margin-bottom: 10px;">Daily Progress & Work Logs</h5>
+                    <div style="margin-bottom: 24px;">${dprLogsHtml}</div>
+
                     <h5 style="color:var(--primary); font-size:15px; margin-bottom: 10px;">Material Movement Summary</h5>
                     <div style="background: var(--bg); border-radius: 8px; border: 1px solid var(--border); padding: 8px;">${matHtml}</div>
                 </div>
             `;
-            document.getElementById('btn-rep-excel').style.display = 'inline-flex';
-            document.getElementById('btn-rep-pdf').style.display = 'inline-flex';
-            document.getElementById('btn-rep-wa').style.display = 'inline-flex';
-        }).catch(err => { resDiv.innerHTML = `<div class="empty-state">Error generating report.</div>`; });
+            
+            if (type === 'single') {
+                document.getElementById('btn-rep-excel-single').style.display = 'inline-flex';
+                document.getElementById('btn-rep-pdf-single').style.display = 'inline-flex';
+            } else {
+                document.getElementById('btn-rep-excel').style.display = 'inline-flex';
+                document.getElementById('btn-rep-pdf').style.display = 'inline-flex';
+                document.getElementById('btn-rep-wa').style.display = 'inline-flex';
+            }
+        }).catch(err => { resDiv.innerHTML = `<div class="empty-state">Error generating report. Check connection.</div>`; });
     }
 
-    function exportCustomReportExcel() {
+    function exportCustomReportExcel(type) {
         if(!lastReportData) return showToast("Generate a report first.");
-        const ws_data = [["Global Industries - Custom Date Range Report"], [`From: ${lastReportData.startDate} To: ${lastReportData.endDate}`], [], ["Worker Name", "Trade", "Present Days", "Total Overtime", "Net Earned"]];
+        const ws_data = [["Global Industries - Detailed Report"], [`From: ${lastReportData.startDate} To: ${lastReportData.endDate}`], [], ["Worker Name", "Trade", "Present Days", "Total Overtime", "Net Earned"]];
         Object.values(lastReportData.itemizedPresence).forEach(wp => {
             if(wp.daysPresent > 0 || wp.totalOT > 0) ws_data.push([wp.name, wp.desig, wp.daysPresent, wp.totalOT, wp.netEarned]);
         });
         const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, "Custom Report"); XLSX.writeFile(wb, `GI_Custom_Report_${lastReportData.startDate}_to_${lastReportData.endDate}.xlsx`); showToast("Excel exported!");
+        XLSX.utils.book_append_sheet(wb, ws, "Report"); XLSX.writeFile(wb, `GI_Report_${lastReportData.startDate}.xlsx`); showToast("Excel exported!");
     }
 
-    function exportCustomReportPDF() {
-        const el = document.getElementById('custom-report-container');
+    function exportCustomReportPDF(containerId, fileName) {
+        const el = document.getElementById(containerId);
         if(!el) return showToast("Generate a report first.");
-        const opt = { margin: 10, filename: 'Custom_Master_Report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        const opt = { margin: 10, filename: `${fileName}.pdf`, image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
         html2pdf().from(el).set(opt).save(); showToast("PDF exported!");
     }
 
@@ -2004,7 +2075,10 @@
           const monthAtt = appState.attendance[mKey] || {};
           const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; 
           tD+=(r.duty||0); tO+=(r.ot||0); tDA+=(r.adv||0); dD[d]+=(r.duty||0); dO[d]+=(r.ot||0);
-          const isLocked = isMasterRollup || (userRole === 'incharge' && r.locked) || (userRole === 'supervisor' && r.duty > 0); 
+          
+          const isEditable = checkAttendanceEditable(d);
+          const isLocked = isMasterRollup || (!isEditable && userRole !== 'admin'); 
+          
           const p1 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyDuty('${w.id}', ${d}, parseFloat(this.value)||0, 'worker')"` : `readonly onclick="requireAuthClick(this)"`;
           const p2 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyOT('${w.id}', ${d}, this.value)"` : `readonly onclick="requireAuthClick(this)"`;
           c += `<td><input class="tbl-input" type="number" step="0.5" min="0" max="1" value="${r.duty||''}" ${p1}></td><td><input class="tbl-input" type="number" step="0.5" min="0" value="${r.ot||''}" ${p2}></td>`;
@@ -2066,48 +2140,6 @@
 
       const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
       XLSX.utils.book_append_sheet(wb, ws, "Attendance"); XLSX.writeFile(wb, `GI_Attendance_${sL}.xlsx`); showToast("Excel downloaded!");
-    }
-
-    function populateSlipWorkerSelect() { const select = document.getElementById("slip-worker-select"); if(!select) return; select.innerHTML = '<option value="">-- Choose Worker --</option>'; appState.workers.forEach(w => { const opt = document.createElement("option"); opt.value = w.id; opt.textContent = `${w.name} (${w.desig})`; select.appendChild(opt); }); renderWageSlip(); }
-    
-    function renderWageSlip() { 
-      const display = document.getElementById("wage-slip-display"); const select = document.getElementById("slip-worker-select"); const themeSelect = document.getElementById("slip-theme-select");
-      const chosenTheme = themeSelect ? themeSelect.value : 'theme-navy'; const mL = document.getElementById("month-select").selectedOptions[0].text;
-      if(!select || !select.value) { display.innerHTML = '<div class="empty-state">Select a worker above to generate statement.</div>'; return; } 
-      
-      const w = appState.workers.find(i => String(i.id) === String(select.value)); let tDuty = 0, tOT = 0, tDailyAdv = 0; 
-      const mKey = getAttendanceMonthKey(); const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
-      const monthAtt = appState.attendance[mKey] || {};
-      for (let d = 1; d <= currentMonthDays; d++) { const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; tDuty += (r.duty||0); tOT += (r.ot||0); tDailyAdv += (r.adv||0); } 
-      
-      const grossAmt = (tDuty * w.rate) + (tOT * (w.rate / 8)); const totalAdv = (appState.advances[w.id] || 0) + tDailyAdv; const netPayable = grossAmt - totalAdv; 
-      
-      display.innerHTML = ` 
-        <div class="slip-box ${chosenTheme}" id="slip-print-area"> 
-          <div style="text-align:center; margin-bottom:12px; border-bottom:2px solid currentColor; padding-bottom:8px;"> 
-            <h3 style="font-family: 'Times New Roman', Times, serif;">GLOBAL INDUSTRIES</h3>
-            <p style="font-size:12px; opacity:0.8; margin-top: 4px; font-weight: bold;">Wage Settlement Slip - ${mL}</p> 
-          </div> 
-          <div class="slip-row"><span>Worker Name:</span><b>${w.name}</b></div> 
-          <div class="slip-row"><span>Designation:</span><b>${w.desig}</b></div>
-          <div class="slip-row"><span>Daily Wage Rate:</span><b>₹${w.rate}</b></div> 
-          <div class="slip-row"><span>Total Days Present:</span><b>${tDuty.toFixed(1)} Days</b></div> 
-          <div class="slip-row"><span>Total Overtime:</span><b>${tOT.toFixed(1)} Hrs</b></div> 
-          <div style="border-top: 1px dashed var(--border); margin: 8px 0;"></div>
-          <div class="slip-row"><span>Gross Earned:</span><b style="color:var(--success);">₹${grossAmt.toFixed(0)}</b></div> 
-          <div class="slip-row" style="color:var(--danger);"><span>Total Advances Deducted:</span><b>- ₹${totalAdv.toFixed(0)}</b></div> 
-          <div class="slip-total"><span>NET PAYABLE:</span><span>₹${netPayable.toFixed(0)}</span></div> 
-          <div style="margin-top: 30px; display: flex; justify-content: space-between; font-size: 11px; opacity:0.7; border-top: 1px solid var(--border); padding-top: 8px;">
-            <span>Worker Signature</span><span>Authorized Signatory</span>
-          </div>
-        </div>`; 
-    }
-
-    function downloadSlipAsPDF() {
-      const element = document.getElementById('slip-print-area');
-      if(!element) { showToast("Generate a slip first."); return; }
-      const opt = { margin: 10, filename: 'Wage_Settlement_Slip.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
-      html2pdf().from(element).set(opt).save(); showToast("PDF downloaded successfully!");
     }
 
     window.onload = init;
