@@ -22,16 +22,18 @@
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
 
+  <!-- Three.js & GSAP Animation Libraries -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.12.2/gsap.min.js"></script>
+
   <style>
-    /* =========================================
-       ORIGINAL THEMES & VARIABLES RESTORED
-       ========================================= */
     :root {
       --primary: #102A43; --primary-light: #1F4E78; --secondary: #2D68C4;
       --accent: #FFD700; --bg: #F0F4F8; --card-bg: #FFFFFF;
       --text: #0F172A; --text-muted: #64748B; --border: #E2E8F0;
       --success: #10B981; --warning: #F59E0B; --danger: #EF4444;
       --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+      --spring: cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
     [data-theme="dark"] {
@@ -42,623 +44,777 @@
     }
 
     * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif; }
-    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; transition: background-color 0.3s, color 0.3s; }
-
-    @keyframes fadeInStagger { from { opacity: 0; transform: translateY(15px); } to { opacity: 1; transform: translateY(0); } }
-    @keyframes pulseWarning { 0% { transform: scale(1); } 50% { transform: scale(1.08); background: var(--danger); box-shadow: 0 0 15px var(--danger);} 100% { transform: scale(1); } }
-    @keyframes popIn { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
     
-    /* OVERLAYS & MODALS */
-    .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.75); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(6px); transition: 0.3s;}
-    .modal-box-center { background: var(--card-bg); padding: 30px 24px; border-radius: 20px; width: 100%; max-width: 420px; text-align: center; box-shadow: var(--shadow); position: relative; animation: popIn 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .close-btn { position: absolute; top: 14px; right: 18px; background: none; border: none; font-size: 26px; color: var(--text-muted); cursor: pointer; transition: 0.2s; }
-    .close-btn:hover { color: var(--danger); }
-    .modal-box-center h2 { color: var(--primary); margin-bottom: 8px; font-size: 22px; font-weight: 800; }
-    .modal-box-center p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; line-height: 1.5; }
-    .pin-input { width: 100%; padding: 18px; font-size: 24px; text-align: center; letter-spacing: 12px; border: 2px solid var(--border); border-radius: 12px; margin-bottom: 16px; background: var(--bg); color: var(--text); outline: none; font-weight: 900; transition: 0.3s; }
-    .pin-input:focus { border-color: var(--secondary); box-shadow: 0 0 0 4px rgba(45,104,196,0.15); }
+    body.barrel-roll { animation: googleBarrelRoll 2s var(--spring) forwards; overflow: hidden; }
+    @keyframes googleBarrelRoll {
+      0% { transform: rotate(0deg) scale(1); }
+      50% { transform: rotate(180deg) scale(0.6); }
+      100% { transform: rotate(360deg) scale(1); }
+    }
 
-    /* HEADER & CONTROL BAR */
-    header { background: var(--card-bg); box-shadow: 0 4px 15px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; transition: background 0.3s; }
+    body { background-color: var(--bg); color: var(--text); min-height: 100vh; display: flex; flex-direction: column; transition: background-color 0.4s, color 0.4s; overflow-x: hidden; }
+
+    @keyframes springIn { 
+      0% { transform: scale(0.5); opacity: 0; } 
+      60% { transform: scale(1.05); opacity: 1; }
+      100% { transform: scale(1); opacity: 1; } 
+    }
+    @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
+    @keyframes pulseWarning { 0% { transform: scale(1); } 50% { transform: scale(1.08); background: var(--danger); box-shadow: 0 0 15px var(--danger);} 100% { transform: scale(1); } }
+    
+    #intro-container { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: #000; z-index: 999999; display: flex; align-items: center; justify-content: center; flex-direction: column; overflow: hidden; cursor: crosshair; }
+    #intro-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; z-index: 1; }
+    
+    .intro-logo-wrapper { position: relative; z-index: 2; display: flex; align-items: center; gap: 25px; animation: springIn 1.5s var(--spring); pointer-events: none; }
+    .intro-svg { width: 180px; height: 180px; filter: drop-shadow(0 0 15px rgba(166,123,91,0.6)); }
+    .intro-text-group { display: flex; align-items: baseline; gap: 15px; }
+    .intro-global { font-family: "Brush Script MT", "Comic Sans MS", cursive; color: #4CAF50; font-size: 110px; line-height: 1; text-shadow: 0 4px 15px rgba(76,175,80,0.5); }
+    .intro-industries { font-family: "Times New Roman", Times, serif; color: #6da35e; font-size: 70px; letter-spacing: 1px; }
+    
+    .enter-instruction { position: relative; z-index: 2; margin-top: 60px; font-size: 16px; font-weight: 800; color: rgba(255,255,255,0.8); text-transform: uppercase; letter-spacing: 4px; animation: pulseWarning 2s infinite; pointer-events: none; background: rgba(0,0,0,0.5); padding: 12px 24px; border-radius: 30px; border: 1px solid rgba(255,255,255,0.2);}
+
+    .overlay { position: fixed; top: 0; left: 0; right: 0; bottom: 0; background: rgba(0, 0, 0, 0.8); z-index: 9999; display: none; align-items: center; justify-content: center; padding: 20px; backdrop-filter: blur(8px); transition: 0.3s;}
+    .modal-box-center { background: var(--card-bg); padding: 30px 24px; border-radius: 24px; width: 100%; max-width: 420px; text-align: center; box-shadow: 0 25px 50px -12px rgba(0,0,0,0.5); position: relative; animation: springIn 0.5s var(--spring); }
+    .close-btn { position: absolute; top: 14px; right: 18px; background: rgba(0,0,0,0.05); border-radius: 50%; width: 34px; height: 34px; border: none; font-size: 22px; color: var(--text-muted); cursor: pointer; transition: 0.3s var(--spring); display: flex; align-items: center; justify-content: center; }
+    .close-btn:hover { background: var(--danger); color: white; transform: rotate(90deg) scale(1.1); }
+    .modal-box-center h2 { color: var(--primary); margin-bottom: 8px; font-size: 22px; font-weight: 900; }
+    .modal-box-center p { color: var(--text-muted); font-size: 14px; margin-bottom: 20px; }
+    .pin-input { width: 100%; padding: 18px; font-size: 24px; text-align: center; letter-spacing: 12px; border: 2px solid var(--border); border-radius: 14px; margin-bottom: 16px; background: var(--bg); color: var(--text); outline: none; font-weight: 900; transition: 0.3s var(--spring); }
+    .pin-input:focus { border-color: var(--secondary); box-shadow: 0 8px 20px rgba(45,104,196,0.15); transform: translateY(-3px); }
+
+    header { background: var(--card-bg); box-shadow: 0 4px 20px rgba(0,0,0,0.06); position: sticky; top: 0; z-index: 100; }
     .letterhead-container { padding: 16px 20px; border-bottom: 4px solid #8B5A2B; display: flex; flex-direction: column; gap: 8px; }
     .letterhead-top { display: flex; align-items: center; justify-content: flex-start; gap: 16px; }
-    .logo-container { width: 55px; height: 55px; flex-shrink: 0; }
+    .logo-container { width: 55px; height: 55px; flex-shrink: 0; filter: drop-shadow(0 4px 6px rgba(0,0,0,0.1)); }
     .title-container { display: flex; align-items: baseline; gap: 8px; }
     .title-global { font-family: "Brush Script MT", "Comic Sans MS", cursive; color: #4CAF50; font-size: 42px; line-height: 1; text-shadow: 1px 1px 0px rgba(0,0,0,0.05); }
     .title-industries { font-family: "Times New Roman", Times, serif; color: #6da35e; font-size: 24px; letter-spacing: 0.5px; }
-    .regd-office { font-size: 13px; color: var(--text); line-height: 1.4; opacity: 0.85; font-weight: 500; }
+    .regd-office { font-size: 13px; color: var(--text); font-weight: 500; }
 
-    .app-control-bar { background: linear-gradient(135deg, #0B1B2B 0%, #152E4D 100%); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 2px solid var(--accent); }
+    .app-control-bar { background: linear-gradient(135deg, #0B1B2B 0%, #152E4D 100%); padding: 12px 20px; display: flex; justify-content: space-between; align-items: center; gap: 10px; flex-wrap: wrap; border-bottom: 3px solid var(--accent); }
     [data-theme="dark"] .app-control-bar { background: linear-gradient(135deg, #020617 0%, #0F172A 100%); }
     .site-selector-wrap { display: flex; align-items: center; gap: 12px; flex: 1; min-width: 280px; position: relative; }
     .site-label { color: #FFD700; font-weight: 800; font-size: 14px; letter-spacing: 0.5px; text-transform: uppercase; }
     
-    .custom-select { background: #FFFFFF; border: none; padding: 10px 16px; border-radius: 20px; font-size: 14px; font-weight: 800; color: #102A43; width: 100%; max-width: 380px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 2px 8px rgba(0,0,0,0.2); transition: 0.2s; }
-    .custom-dropdown-menu { position: absolute; top: 45px; left: 45px; background: var(--card-bg); width: 100%; max-width: 380px; border-radius: 12px; box-shadow: var(--shadow); z-index: 200; overflow: hidden; display: none; border: 1px solid var(--border); animation: popIn 0.2s ease; max-height: 450px; overflow-y: auto;}
+    .custom-select { background: #FFFFFF; border: none; padding: 10px 18px; border-radius: 20px; font-size: 14px; font-weight: 800; color: #102A43; width: 100%; max-width: 380px; cursor: pointer; display: flex; justify-content: space-between; align-items: center; box-shadow: 0 4px 12px rgba(0,0,0,0.15); transition: 0.3s var(--spring); }
+    .custom-select:hover { transform: translateY(-2px); box-shadow: 0 8px 16px rgba(0,0,0,0.2); }
+    .custom-dropdown-menu { position: absolute; top: 50px; left: 45px; background: var(--card-bg); width: 100%; max-width: 380px; border-radius: 16px; box-shadow: 0 15px 35px rgba(0,0,0,0.2); z-index: 200; display: none; border: 1px solid var(--border); animation: popIn 0.3s var(--spring); max-height: 450px; overflow-y: auto;}
     .custom-dropdown-menu.active { display: block; }
 
-    .dropdown-site-header { background: var(--bg); padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--border); position: relative;}
-    .site-title-text { font-size: 14px; font-weight: 900; color: var(--primary); text-transform: uppercase; letter-spacing: 0.5px; display: flex; align-items: center; gap: 8px;}
-    
+    .dropdown-site-header { background: var(--bg); padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; border-bottom: 2px solid var(--border); }
+    .site-title-text { font-size: 14px; font-weight: 900; color: var(--primary); text-transform: uppercase; display: flex; align-items: center; gap: 8px;}
     .dropdown-zone-item { padding: 12px 16px 12px 40px; font-size: 14px; font-weight: 700; color: var(--text); display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border); position: relative; cursor: pointer; transition: 0.2s; background: var(--card-bg); }
-    .dropdown-zone-item:hover { background: rgba(45, 104, 196, 0.05); padding-left: 45px; color: var(--secondary); }
+    .dropdown-zone-item:hover { background: rgba(45, 104, 196, 0.08); padding-left: 48px; color: var(--secondary); }
     .dropdown-zone-item::before { content: ''; position: absolute; left: 22px; top: 0; height: 100%; width: 2px; background: var(--border); transition: 0.2s;}
     .dropdown-zone-item::after { content: ''; position: absolute; left: 22px; top: 50%; width: 12px; height: 2px; background: var(--border); transition: 0.2s;}
     .dropdown-zone-item.last-zone::before { height: 50%; }
     .dropdown-zone-item:hover::before, .dropdown-zone-item:hover::after { background: var(--secondary); }
 
-    .action-btn-sm { opacity: 0.7; transition: 0.2s; font-size: 13px; padding: 5px; display: inline-flex; align-items: center; justify-content: center; background: white; border-radius: 6px; box-shadow: 0 1px 3px rgba(0,0,0,0.1); cursor: pointer; }
-    .action-btn-sm:hover { opacity: 1; transform: scale(1.1); box-shadow: 0 2px 5px rgba(0,0,0,0.2); }
-    .add-zone-btn { color: var(--success); cursor: pointer; background: rgba(16, 185, 129, 0.1); padding: 6px 12px; border-radius: 12px; font-size: 11px; font-weight: 900; transition: 0.2s; text-transform: uppercase; letter-spacing: 0.5px;}
-    .add-zone-btn:hover { background: var(--success); color: white; transform: scale(1.05);}
+    .action-btn-sm { opacity: 0.7; transition: 0.3s var(--spring); font-size: 13px; padding: 6px; display: inline-flex; align-items: center; justify-content: center; background: white; border-radius: 8px; box-shadow: 0 2px 4px rgba(0,0,0,0.08); cursor: pointer; }
+    .action-btn-sm:hover { opacity: 1; transform: scale(1.15) translateY(-2px); box-shadow: 0 6px 12px rgba(0,0,0,0.15); border-color: var(--secondary); }
+    .add-zone-btn { color: var(--success); cursor: pointer; background: rgba(16, 185, 129, 0.1); padding: 8px 14px; border-radius: 12px; font-size: 11px; font-weight: 900; transition: 0.3s var(--spring); text-transform: uppercase;}
+    .add-zone-btn:hover { background: var(--success); color: white; transform: scale(1.05) translateY(-2px); box-shadow: 0 6px 15px rgba(16,185,129,0.3);}
 
     .status-group { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-    .live-clock-badge { background: rgba(0,0,0,0.3); color: #FFF; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.1); }
-    .user-profile-badge { background: rgba(255,255,255,0.15); color: #FFF; font-size: 12px; font-weight: 700; padding: 6px 12px; border-radius: 20px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.3s;}
-    .user-profile-badge:hover { background: rgba(255,255,255,0.3); transform: scale(1.05); }
-    .btn-icon { background: rgba(255,255,255,0.2); border: none; border-radius: 50%; width: 34px; height: 34px; color: white; cursor: pointer; transition: 0.2s; font-size: 15px; display: flex; align-items: center; justify-content: center;}
-    #auth-status-btn { background: rgba(255,255,255,0.2); border: none; border-radius: 20px; padding: 8px 16px; color: white; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.3s ease; }
+    .live-clock-badge { background: rgba(0,0,0,0.4); color: #FFF; font-size: 12px; font-weight: 800; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; border: 1px solid rgba(255,255,255,0.15); }
+    .user-profile-badge { background: rgba(255,255,255,0.15); color: #FFF; font-size: 12px; font-weight: 800; padding: 8px 14px; border-radius: 20px; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.3s var(--spring); border: 1px solid rgba(255,255,255,0.1);}
+    .user-profile-badge:hover { background: rgba(255,255,255,0.3); transform: scale(1.05) translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3);}
+    .btn-icon { background: rgba(255,255,255,0.2); border: none; border-radius: 50%; width: 38px; height: 38px; color: white; cursor: pointer; transition: 0.3s var(--spring); font-size: 16px; display: flex; align-items: center; justify-content: center;}
+    .btn-icon:hover { transform: rotate(30deg) scale(1.1); background: rgba(255,255,255,0.3); }
+    #auth-status-btn { background: rgba(255,255,255,0.2); border: none; border-radius: 20px; padding: 8px 18px; color: white; font-size: 13px; font-weight: 800; display: flex; align-items: center; gap: 6px; cursor: pointer; transition: 0.3s var(--spring); }
+    #auth-status-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
     .shake-error { animation: pulseWarning 0.4s ease; }
 
-    /* DASHBOARD & TABS */
-    .container { width: 100%; padding: 20px; flex: 1; max-width: 1600px; margin: 0 auto; }
-    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; margin-bottom: 24px; }
-    .stat-card { background: var(--card-bg); padding: 18px; border-radius: 16px; box-shadow: var(--shadow); border-left: 6px solid var(--secondary); display: flex; flex-direction: column; transition: 0.3s;}
-    .stat-card:hover { transform: translateY(-3px); box-shadow: 0 15px 25px -5px rgba(0, 0, 0, 0.1); }
+    .container { width: 100%; padding: 24px; flex: 1; max-width: 1600px; margin: 0 auto; }
+    .dashboard-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 20px; margin-bottom: 24px; }
+    .stat-card { background: var(--card-bg); padding: 22px; border-radius: 20px; box-shadow: var(--shadow); border-left: 6px solid var(--secondary); display: flex; flex-direction: column; transition: 0.4s var(--spring); opacity: 0; }
+    .stat-card:hover { transform: translateY(-6px); box-shadow: 0 20px 30px -5px rgba(0, 0, 0, 0.15); }
     .stat-card.accent { border-left-color: var(--accent); }
     .stat-card.success { border-left-color: var(--success); }
     .stat-card.warning { border-left-color: var(--warning); }
-    .stat-label { font-size: 12px; text-transform: uppercase; font-weight: 800; color: var(--text-muted); margin-bottom: 6px; letter-spacing: 0.5px; }
-    .stat-value { font-size: 24px; font-weight: 900; color: var(--primary); }
+    .stat-label { font-size: 12px; text-transform: uppercase; font-weight: 900; color: var(--text-muted); margin-bottom: 8px; letter-spacing: 0.5px; }
+    .stat-value { font-size: 28px; font-weight: 900; color: var(--primary); }
 
-    .nav-tabs { display: flex; gap: 10px; margin-bottom: 24px; border-bottom: 3px solid var(--border); padding-bottom: 12px; overflow-x: auto; scrollbar-width: none; }
+    .nav-tabs { display: flex; gap: 12px; margin-bottom: 24px; border-bottom: 3px solid var(--border); padding-bottom: 16px; overflow-x: auto; scrollbar-width: none; }
     .nav-tabs::-webkit-scrollbar { display: none; }
-    .tab-btn { background: var(--card-bg); border: 1px solid var(--border); padding: 12px 18px; font-size: 14px; font-weight: 800; color: var(--text-muted); border-radius: 12px; cursor: pointer; white-space: nowrap; transition: 0.3s; box-shadow: 0 2px 4px rgba(0,0,0,0.02);}
-    .tab-btn:hover { border-color: var(--secondary); color: var(--secondary); }
-    .tab-btn.active { background: var(--secondary); color: white; border-color: var(--secondary); box-shadow: 0 6px 12px rgba(45, 104, 196, 0.3); transform: translateY(-2px);}
+    .tab-btn { background: var(--card-bg); border: 1px solid var(--border); padding: 14px 20px; font-size: 14px; font-weight: 800; color: var(--text-muted); border-radius: 14px; cursor: pointer; white-space: nowrap; transition: 0.3s var(--spring); box-shadow: 0 2px 6px rgba(0,0,0,0.03);}
+    .tab-btn:hover { border-color: var(--secondary); color: var(--secondary); transform: translateY(-2px); box-shadow: 0 8px 15px rgba(45,104,196,0.1); }
+    .tab-btn.active { background: var(--secondary); color: white; border-color: var(--secondary); box-shadow: 0 8px 20px rgba(45, 104, 196, 0.35); transform: translateY(-3px);}
     .tab-btn.special-tab { background: #FFFBEB; border-color: #FBBF24; color: #B45309; }
-    .tab-btn.special-tab.active { background: #F59E0B; border-color: #D97706; color: white; }
+    .tab-btn.special-tab.active { background: #F59E0B; border-color: #D97706; color: white; box-shadow: 0 8px 20px rgba(245,158,11,0.35);}
+    .tab-btn.report-tab { background: #F3E8FF; border-color: #C084FC; color: #6B21A8; }
+    .tab-btn.report-tab.active { background: #9333EA; border-color: #7E22CE; color: white; box-shadow: 0 8px 20px rgba(147,51,234,0.35);}
 
-    .toolbar { background: var(--card-bg); padding: 20px; border-radius: 16px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; }
-    select, input, textarea { padding: 14px; font-size: 15px; border-radius: 10px; border: 2px solid var(--border); outline: none; width: 100%; background: var(--bg); color: var(--text); font-weight: 600; transition: 0.3s; }
-    input:focus, select:focus, textarea:focus { border-color: var(--secondary); background: var(--card-bg); }
+    .toolbar { background: var(--card-bg); padding: 22px; border-radius: 20px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 16px; margin-bottom: 24px; border: 1px solid var(--border); }
+    select, input, textarea { padding: 16px; font-size: 15px; border-radius: 12px; border: 2px solid var(--border); outline: none; width: 100%; background: var(--bg); color: var(--text); font-weight: 700; transition: 0.3s var(--spring); }
+    input:focus, select:focus, textarea:focus { border-color: var(--secondary); background: var(--card-bg); transform: translateY(-2px); box-shadow: 0 6px 15px rgba(45,104,196,0.1); }
     
-    .btn { cursor: pointer; font-weight: 800; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 14px; font-size: 14px; border-radius: 10px; width: 100%; transition: 0.2s; box-shadow: 0 2px 4px rgba(0,0,0,0.1);}
-    .btn:active { transform: scale(0.96); box-shadow: none;}
-    .btn-primary { background: var(--secondary); color: white; }
-    .btn-success { background: var(--success); color: white; }
+    .btn { cursor: pointer; font-weight: 800; border: none; display: inline-flex; align-items: center; justify-content: center; gap: 10px; padding: 16px; font-size: 15px; border-radius: 14px; width: 100%; transition: 0.3s var(--spring); box-shadow: 0 4px 10px rgba(0,0,0,0.1);}
+    .btn:hover { transform: translateY(-3px); box-shadow: 0 8px 20px rgba(0,0,0,0.15); }
+    .btn:active { transform: scale(0.94); box-shadow: none;}
+    .btn-primary { background: linear-gradient(135deg, var(--secondary), #3B82F6); color: white; }
+    .btn-success { background: linear-gradient(135deg, #10B981, #059669); color: white; }
     .btn-outline { background: transparent; border: 2px solid var(--border); color: var(--text); box-shadow: none;}
-    .btn-outline:hover { background: var(--bg); }
-    .btn-danger { background: var(--danger); color: white; }
-    .btn-whatsapp { background: #25D366; color: white; }
-    .btn-small { padding: 8px 12px; font-size: 12px; }
-    .btn-remove-row { background: var(--danger); color: white; border: none; cursor: pointer; }
+    .btn-outline:hover { background: var(--bg); border-color: var(--text-muted);}
+    .btn-danger { background: linear-gradient(135deg, #EF4444, #DC2626); color: white; }
+    .btn-whatsapp { background: linear-gradient(135deg, #25D366, #128C7E); color: white; }
+    .btn-small { padding: 10px 14px; font-size: 13px; border-radius: 12px;}
 
-    .tab-content { display: none; animation: fadeInStagger 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
-    .tab-content.active { display: block; }
+    .tab-content { display: none; }
+    .tab-content.active { display: block; animation: slideUpFade 0.5s var(--spring) forwards; }
 
-    /* SEARCH BAR & WORKER CARDS */
-    .search-filter-bar { display: flex; gap: 12px; margin-bottom: 16px; flex-wrap: wrap; }
+    .search-filter-bar { display: flex; gap: 12px; margin-bottom: 20px; flex-wrap: wrap; }
     .search-input-box { flex: 2; min-width: 220px; position: relative; }
-    .search-input-box input { padding-left: 38px; }
-    .search-icon { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--text-muted); }
-    .quick-action-btn { flex: 1; min-width: 160px; background: #DCFCE7; color: #166534; border: 1px solid #86EFAC; font-weight: 800; border-radius: 10px; cursor: pointer; transition: 0.2s; display: inline-flex; align-items: center; justify-content: center; gap: 6px; padding: 12px; }
-    .quick-action-btn:hover { background: #10B981; color: white; }
+    .search-input-box input { padding-left: 42px; }
+    .search-icon { position: absolute; left: 16px; top: 50%; transform: translateY(-50%); font-size: 18px; color: var(--text-muted); }
 
-    .worker-daily-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
-    .worker-card { background: var(--card-bg); border-radius: 16px; padding: 20px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 14px; transition: 0.3s; animation: fadeInStagger 0.4s ease backwards;}
-    .kp-card { border: 2px solid #FCD34D; background: #FFFBEB; }
+    .worker-daily-list { display: grid; grid-template-columns: repeat(auto-fill, minmax(350px, 1fr)); gap: 18px; }
+    .worker-card { background: var(--card-bg); border-radius: 20px; padding: 22px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; transition: 0.4s var(--spring); animation: slideUpFade 0.5s var(--spring) backwards;}
+    .worker-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); border-color: var(--secondary); }
+    
+    .kp-card { border: 2px solid #FCD34D; background: linear-gradient(145deg, #FFFFFF, #FFFBEB); }
     .kp-card .worker-name { color: #92400E; }
     
     .worker-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
-    .avatar { width: 50px; height: 50px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 18px; font-weight: 900; flex-shrink: 0; box-shadow: 0 4px 8px rgba(0,0,0,0.15);}
-    .worker-name { font-size: 18px; font-weight: 800; color: var(--primary); }
-    .worker-desig { font-size: 13px; color: var(--text-muted); font-weight: 600; margin-top: 4px;}
+    .avatar { width: 54px; height: 54px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; flex-shrink: 0; box-shadow: 0 6px 12px rgba(0,0,0,0.15);}
+    .worker-name { font-size: 19px; font-weight: 900; color: var(--primary); }
+    .worker-desig { font-size: 14px; color: var(--text-muted); font-weight: 700; margin-top: 4px;}
     
-    .duty-selector { display: flex; gap: 8px; }
-    .duty-opt { flex: 1; text-align: center; padding: 12px 4px; font-size: 14px; font-weight: 800; border: 2px solid var(--border); border-radius: 10px; background: var(--bg); cursor: pointer; transition: 0.2s; color: var(--text);}
-    .duty-opt:active { transform: scale(0.92); }
-    .duty-opt.selected-p { background: #DCFCE7; color: #166534; border-color: #86EFAC; }
-    .duty-opt.selected-h { background: #FEF9C3; color: #854D0E; border-color: #FDE047; }
-    .duty-opt.selected-a { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; }
-    .duty-opt.locked { opacity: 0.6; cursor: not-allowed; position: relative; overflow: hidden; }
-    .duty-opt.locked::after { content: '🔒'; position: absolute; right: 5px; top: 5px; font-size: 10px; }
+    .duty-selector { display: flex; gap: 10px; }
+    .duty-opt { flex: 1; text-align: center; padding: 14px 4px; font-size: 15px; font-weight: 800; border: 2px solid var(--border); border-radius: 12px; background: var(--bg); cursor: pointer; transition: 0.3s var(--spring); color: var(--text);}
+    .duty-opt:active { transform: scale(0.9); }
+    .duty-opt.selected-p { background: #DCFCE7; color: #166534; border-color: #86EFAC; box-shadow: 0 4px 10px rgba(16,185,129,0.2); transform: translateY(-2px);}
+    .duty-opt.selected-h { background: #FEF9C3; color: #854D0E; border-color: #FDE047; box-shadow: 0 4px 10px rgba(234,179,8,0.2); transform: translateY(-2px);}
+    .duty-opt.selected-a { background: #FEE2E2; color: #991B1B; border-color: #FCA5A5; box-shadow: 0 4px 10px rgba(239,68,68,0.2); transform: translateY(-2px);}
+    .duty-opt.locked { opacity: 0.6; cursor: not-allowed; position: relative; overflow: hidden; transform: none !important; box-shadow: none !important;}
+    .duty-opt.locked::after { content: '🔒'; position: absolute; right: 6px; top: 6px; font-size: 11px; }
 
-    .input-row { display: flex; gap: 12px; margin-top: 6px; }
-    .input-box { flex: 1; background: var(--bg); padding: 8px 12px; border-radius: 8px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); }
-    .input-box span { font-size: 12px; font-weight: 800; color: var(--text-muted); }
-    .input-box input { width: 60px; padding: 6px; font-size: 14px; text-align: right; background: var(--card-bg); border: 1px solid var(--border); border-radius: 6px; font-weight: bold; color: var(--text); }
+    .input-row { display: flex; gap: 14px; margin-top: 6px; }
+    .input-box { flex: 1; background: var(--bg); padding: 10px 14px; border-radius: 12px; display: flex; align-items: center; justify-content: space-between; border: 1px solid var(--border); }
+    .input-box span { font-size: 13px; font-weight: 800; color: var(--text-muted); }
+    .input-box input { width: 70px; padding: 8px; font-size: 15px; text-align: right; background: var(--card-bg); border: 2px solid var(--border); border-radius: 8px; font-weight: 900; color: var(--text); }
 
-    .dpr-section { background: var(--card-bg); border-radius: 16px; padding: 22px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 20px; transition: 0.3s; }
-    .dpr-section h4 { color: var(--primary); margin-bottom: 16px; font-size: 17px; font-weight: 900; display: flex; justify-content: space-between;}
-    .material-row { display: flex; gap: 12px; margin-bottom: 12px; background: var(--bg); padding: 10px; border-radius: 10px; border: 1px solid var(--border); }
-    .dpr-textarea { min-height: 120px; resize: vertical; }
+    .dpr-section { background: var(--card-bg); border-radius: 20px; padding: 24px; box-shadow: var(--shadow); border: 1px solid var(--border); margin-bottom: 24px; transition: 0.3s; }
+    .dpr-section h4 { color: var(--primary); margin-bottom: 18px; font-size: 18px; font-weight: 900; display: flex; justify-content: space-between;}
+    .material-row { display: flex; gap: 14px; margin-bottom: 14px; background: var(--bg); padding: 12px; border-radius: 12px; border: 1px solid var(--border); }
+    .dpr-textarea { min-height: 140px; resize: vertical; }
     
-    .empty-state { text-align: center; padding: 50px 20px; background: var(--card-bg); border-radius: 16px; color: var(--text-muted); border: 2px dashed var(--border); font-weight: 700; font-size: 15px; line-height: 1.5;}
-    #toast { position: fixed; bottom: -80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 16px 32px; border-radius: 30px; font-weight: 800; font-size: 14px; box-shadow: 0 10px 30px rgba(0,0,0,0.4); transition: bottom 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275); z-index: 99999; }
+    .empty-state { text-align: center; padding: 60px 20px; background: var(--card-bg); border-radius: 20px; color: var(--text-muted); border: 2px dashed var(--border); font-weight: 800; font-size: 16px; line-height: 1.5;}
+    #toast { position: fixed; bottom: -80px; left: 50%; transform: translateX(-50%); background: var(--primary); color: white; padding: 16px 32px; border-radius: 30px; font-weight: 900; font-size: 15px; box-shadow: 0 15px 40px rgba(0,0,0,0.3); transition: bottom 0.5s var(--spring); z-index: 99999; }
     
-    /* TABLES & SLIPS */
-    .table-container { background: var(--card-bg); border-radius: 12px; box-shadow: var(--shadow); overflow-x: auto; border: 1px solid var(--border); -webkit-overflow-scrolling: touch;}
-    table { width: 100%; border-collapse: collapse; font-size: 13px; white-space: nowrap; color: var(--text); }
-    th, td { border: 1px solid var(--border); padding: 12px 8px; text-align: center; }
-    th { background: var(--primary-light); color: white; font-weight: 800; font-size: 13px;}
+    .table-container { background: var(--card-bg); border-radius: 16px; box-shadow: var(--shadow); overflow-x: auto; border: 1px solid var(--border); -webkit-overflow-scrolling: touch;}
+    table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; color: var(--text); }
+    th, td { border: 1px solid var(--border); padding: 14px 10px; text-align: center; }
+    th { background: var(--primary-light); color: white; font-weight: 900; font-size: 13px;}
     .sticky-col { position: sticky; left: 0; background: var(--card-bg); z-index: 10; border-right: 3px solid var(--border); }
     th.sticky-col { background: var(--primary-light); z-index: 20; }
-    .tbl-input { width: 45px; text-align: center; border: 1px solid var(--border); padding: 4px; border-radius: 4px; }
-    .slip-row { display: flex; justify-content: space-between; padding: 8px 0; border-bottom: 1px dashed var(--border); font-size: 14px; }
-    .slip-total { display: flex; justify-content: space-between; padding: 12px 0 0 0; font-size: 16px; font-weight: 900; color: var(--primary); }
+    
+    .tbl-input { width: 45px; padding: 4px 2px; text-align: center; font-size: 13px; font-weight: 700; border: 1px solid var(--border); border-radius: 4px; background: var(--card-bg); color: var(--text); }
+    .tbl-input:focus { border-color: var(--secondary); box-shadow: none; transform: none; }
 
-    /* ADVANCED LIVE ACTIVITY & CHAT PANEL STYLES */
-    .activity-panel { position: fixed; top: 0; right: -550px; width: 100%; max-width: 500px; height: 100vh; background: var(--card-bg); box-shadow: -5px 0 20px rgba(0,0,0,0.15); z-index: 10000; display: flex; flex-direction: column; transition: 0.4s cubic-bezier(0.175, 0.885, 0.32, 1); border-left: 1px solid var(--border); backdrop-filter: blur(10px);}
+    .activity-panel { position: fixed; top: 0; right: -550px; width: 100%; max-width: 500px; height: 100vh; background: var(--card-bg); box-shadow: -5px 0 20px rgba(0,0,0,0.15); z-index: 10000; display: flex; flex-direction: column; transition: 0.4s var(--spring); border-left: 1px solid var(--border); backdrop-filter: blur(10px);}
     .activity-panel.open { right: 0; }
     .activity-header { padding: 24px 20px; background: linear-gradient(135deg, var(--primary), var(--primary-light)); color: white; display: flex; justify-content: space-between; align-items: center; }
     .activity-body { flex: 1; overflow-y: auto; padding: 20px; }
-    
     .ana-heading { font-size: 12px; font-weight: 900; color: var(--text); text-transform: uppercase; margin: 24px 0 12px 0; border-bottom: 2px solid var(--border); padding-bottom: 6px; letter-spacing: 0.5px;}
     .ana-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; }
     .ana-box { background: var(--bg); border: 1px solid var(--border); padding: 12px 8px; border-radius: 8px; text-align: center; display: flex; flex-direction: column; justify-content: center;}
     .ana-box span { font-size: 10px; font-weight: 800; color: var(--text-muted); text-transform: uppercase; margin-bottom: 4px; }
     .ana-box b { font-size: 16px; color: var(--primary); font-weight: 900; }
     .text-success { color: var(--success) !important; }
-
     .online-tag { display: flex; align-items: center; justify-content: space-between; background: var(--bg); padding: 10px 14px; border-radius: 12px; font-size: 13px; font-weight: 700; margin-bottom: 8px; border: 1px solid var(--border); }
     .pulse-dot { width: 10px; height: 10px; background: #10B981; border-radius: 50%; animation: pulseWarning 1.5s infinite; margin-right: 8px; display: inline-block; }
-    
     .log-item { background: var(--bg); padding: 12px; border-radius: 10px; margin-bottom: 10px; font-size: 13px; border-left: 4px solid var(--secondary); font-weight: 600; line-height: 1.4;}
     .log-time { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-weight: normal;}
 
-    /* CHAT MODULE STYLES (Restored to original clean UI) */
-    .chat-container { display: flex; flex-direction: column; flex: 1; min-height: 300px; max-height: 450px; background: var(--bg); border-radius: 12px; border: 1px solid var(--border); overflow: hidden; }
-    .chat-messages { flex: 1; padding: 16px; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; }
-    .chat-bubble { max-width: 75%; padding: 10px 14px; border-radius: 12px; font-size: 13px; line-height: 1.4; box-shadow: 0 1px 2px rgba(0,0,0,0.05); position: relative; }
-    .chat-bubble.incoming { background: var(--card-bg); align-self: flex-start; border: 1px solid var(--border); }
-    .chat-bubble.outgoing { background: var(--secondary); color: white; align-self: flex-end; }
-    .chat-sender { font-size: 10px; font-weight: 800; opacity: 0.8; margin-bottom: 3px; display: block; text-transform: uppercase; }
-    .chat-input-area { display: flex; padding: 12px; background: var(--card-bg); border-top: 1px solid var(--border); gap: 8px; }
-
-    /* System Chat Alerts */
-    .chat-system { text-align: center; font-size: 11px; color: var(--text-muted); margin: 8px 0; font-weight: bold; background: rgba(0,0,0,0.05); padding: 4px 10px; border-radius: 12px; display: inline-block; align-self: center;}
-
-    /* INVENTORY STOCK BADGE */
-    .stock-badge { display: inline-flex; align-items: center; background: rgba(16, 185, 129, 0.1); color: var(--success); padding: 4px 10px; border-radius: 6px; font-size: 12px; font-weight: 800; border: 1px solid #86EFAC; }
-    
-    /* SLIP THEMES */
-    .slip-box { background: var(--card-bg); border: 2px solid var(--border); border-radius: 12px; padding: 20px; max-width: 400px; margin: 0 auto; box-shadow: var(--shadow); }
-    .slip-box.theme-navy { border-color: #1E3A8A; }
-    .slip-box.theme-navy h3 { color: #1E3A8A; }
-    .slip-box.theme-slate { border-color: #334155; background: #F8FAFC; color: #0F172A; }
-    .slip-box.theme-slate h3 { color: #334155; }
-    .slip-box.theme-amber { border-color: #D97706; background: #FFFBEB; color: #1E293B; }
-    .slip-box.theme-amber h3 { color: #92400E; }
-
-    @media print {
-      body * { visibility: hidden; }
-      #slip-print-area, #slip-print-area * { visibility: visible; }
-      #slip-print-area { position: absolute; left: 0; top: 0; width: 100%; max-width: 100%; border: none; box-shadow: none; margin: 0; padding: 0; }
-    }
+    #main-app { display: none; opacity: 0; width: 100%; min-height: 100vh; flex-direction: column; }
   </style>
 </head>
 <body>
 
-  <!-- SINGLE TAB LOCK SCRIPT -->
-  <script>
-    const sessionChannel = new BroadcastChannel('gi_session_lock');
-    const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+  <!-- CINEMATIC 3D INTRO CONTAINER -->
+  <div id="intro-container">
+    <canvas id="intro-canvas"></canvas>
     
-    sessionChannel.postMessage({ type: 'CHECK_ACTIVE' });
-    sessionChannel.onmessage = (event) => {
-      if (event.data.type === 'CHECK_ACTIVE') {
-        sessionChannel.postMessage({ type: 'ALREADY_ACTIVE', existingId: sessionId });
-      } else if (event.data.type === 'ALREADY_ACTIVE' && event.data.existingId !== sessionId) {
-        document.body.innerHTML = `
-          <div style="display:flex; height:100vh; width:100vw; align-items:center; justify-content:center; flex-direction:column; background:var(--bg); color:var(--text); text-align:center; padding: 20px;">
-            <h1 style="color:var(--danger); margin-bottom:10px;">⚠️ Access Blocked</h1>
-            <p style="font-weight:700; max-width:400px; line-height:1.5;">The portal is already open in another tab. Using multiple tabs simultaneously corrupts the live database. Please close this tab and return to your active session.</p>
+    <div class="intro-logo-wrapper">
+      <div class="intro-svg">
+        <svg viewBox="0 0 100 100" width="100%" height="100%">
+          <defs>
+            <linearGradient id="globeGradIntro" x1="0%" y1="0%" x2="100%" y2="100%">
+              <stop offset="0%" stop-color="#A67B5B" /><stop offset="100%" stop-color="#70441d" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="50" r="45" stroke="url(#globeGradIntro)" stroke-width="4" fill="none" />
+          <ellipse cx="50" cy="50" rx="18" ry="45" stroke="url(#globeGradIntro)" stroke-width="3" fill="none" />
+          <line x1="6" y1="50" x2="94" y2="50" stroke="url(#globeGradIntro)" stroke-width="3" />
+          <rect x="-2" y="36" width="104" height="28" fill="url(#globeGradIntro)" rx="3" />
+          <text x="50" y="56" fill="#FFFFFF" font-family="'Arial Black', sans-serif" font-size="20" font-weight="900" letter-spacing="3" text-anchor="middle">GI</text>
+        </svg>
+      </div>
+      <div class="intro-text-group">
+        <span class="intro-global">Global</span>
+        <span class="intro-industries">Industries</span>
+      </div>
+    </div>
+    
+    <div class="enter-instruction" id="enter-instruction">Click Anywhere To Initialize</div>
+  </div>
+
+  <div id="main-app">
+    <script>
+      const sessionChannel = new BroadcastChannel('gi_session_lock');
+      const sessionId = Date.now().toString() + Math.random().toString(36).substr(2, 9);
+      
+      sessionChannel.postMessage({ type: 'CHECK_ACTIVE' });
+      sessionChannel.onmessage = (event) => {
+        if (event.data.type === 'CHECK_ACTIVE') {
+          sessionChannel.postMessage({ type: 'ALREADY_ACTIVE', existingId: sessionId });
+        } else if (event.data.type === 'ALREADY_ACTIVE' && event.data.existingId !== sessionId) {
+          document.getElementById('main-app').innerHTML = `
+            <div style="display:flex; height:100vh; width:100vw; align-items:center; justify-content:center; flex-direction:column; background:var(--bg); color:var(--text); text-align:center; padding: 20px;">
+              <h1 style="color:var(--danger); margin-bottom:10px; font-size:40px;">⚠️ Access Blocked</h1>
+              <p style="font-weight:700; max-width:450px; line-height:1.6;">The portal is already open in another tab or window. Using multiple tabs simultaneously corrupts the live database. Please close this tab and return to your active session.</p>
+            </div>
+          `;
+        }
+      };
+    </script>
+
+    <div id="toast"><span id="toast-msg">System Ready</span></div>
+
+    <!-- CONFLICT DETECTOR OVERLAY -->
+    <div id="conflict-overlay" class="overlay" style="z-index: 100000;">
+      <div class="modal-box-center" style="border-top: 6px solid var(--danger);">
+        <h2>⚠️ Sync Conflict Detected</h2>
+        <p style="color: var(--danger); font-weight: bold;">Another user just modified this group while you were working.</p>
+        <p style="font-size:12px;">If you force save, you will overwrite their changes. If you reload, you will lose your recent unsaved edits.</p>
+        <div style="display: flex; gap: 10px; margin-top: 15px;">
+          <button class="btn btn-outline" style="flex:1;" onclick="resolveConflict('reload')">🔄 Reload Cloud Data</button>
+          <button class="btn btn-danger" style="flex:1;" onclick="resolveConflict('force')">⚠️ Force Override</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- LIVE ACTIVITY PANEL -->
+    <div id="activity-panel" class="activity-panel">
+      <div class="activity-header">
+        <h3 style="font-size: 18px;">Live Portal Analytics</h3>
+        <button style="background:none; border:none; color:white; font-size: 28px; cursor:pointer;" onclick="toggleActivityPanel()">&times;</button>
+      </div>
+      <div class="activity-body">
+        <h4 class="ana-heading">System Diagnostics</h4>
+        <div class="ana-grid">
+           <div class="ana-box"><span>Ping</span><b id="ana-ping">--</b></div>
+           <div class="ana-box"><span>CPU Est.</span><b id="ana-cpu">--</b></div>
+           <div class="ana-box"><span>Uptime</span><b id="ana-uptime">00:00</b></div>
+           <div class="ana-box"><span>Packet Loss</span><b class="text-success">0.00%</b></div>
+           <div class="ana-box"><span>Encryption</span><b class="text-success">AES-256</b></div>
+           <div class="ana-box"><span>Cloud Node</span><b>Asia-SE1</b></div>
+           <div class="ana-box"><span>Total Syncs</span><b id="ana-syncs">0</b></div>
+           <div class="ana-box"><span>Payload</span><b id="ana-payload">0 KB</b></div>
+           <div class="ana-box"><span>Database</span><b class="text-success">Connected</b></div>
+        </div>
+
+        <h4 class="ana-heading">Site Operations</h4>
+        <div class="ana-grid">
+           <div class="ana-box"><span>Active Groups</span><b id="ana-zones">0</b></div>
+           <div class="ana-box"><span>Workforce</span><b id="ana-workforce">0</b></div>
+           <div class="ana-box"><span>Officials</span><b id="ana-kp">0</b></div>
+           <div class="ana-box"><span>Attend. Rate</span><b id="ana-attend-rate">0%</b></div>
+           <div class="ana-box"><span>Rain Days</span><b id="ana-rain">0</b></div>
+           <div class="ana-box"><span>Mat. Activity</span><b id="ana-mat">0</b></div>
+        </div>
+
+        <h4 class="ana-heading">Financial Overview (Monthly)</h4>
+        <div class="ana-grid">
+           <div class="ana-box"><span>Gross Wage</span><b id="ana-gross">₹0</b></div>
+           <div class="ana-box"><span>Total Adv.</span><b id="ana-adv">₹0</b></div>
+           <div class="ana-box"><span>Total OT</span><b id="ana-ot">0h</b></div>
+        </div>
+        <div class="ana-box" style="margin-top: 10px; background: #FFFBEB; border-color: #FCD34D;">
+           <span>Net Burn / Total Payable</span><b id="ana-net" style="color: #B45309; font-size: 20px;">₹0</b>
+        </div>
+
+        <h4 class="ana-heading">Network Presence</h4>
+        <div class="ana-grid" style="grid-template-columns: 1fr 1fr;">
+           <div class="ana-box"><span>Active Sessions</span><b id="ana-sessions">1</b></div>
+           <div class="ana-box"><span>Peak Users</span><b id="ana-peak">1</b></div>
+           <div class="ana-box"><span>Mobile Div.</span><b id="ana-mobile">0%</b></div>
+           <div class="ana-box"><span>Desktop Div.</span><b id="ana-desktop">0%</b></div>
+        </div>
+        <div id="online-users-list" style="margin: 12px 0 20px 0;"></div>
+
+        <h4 class="ana-heading">Audit Log</h4>
+        <div class="ana-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
+           <div class="ana-box"><span>Today's Logs</span><b id="ana-logs">0</b></div>
+           <div class="ana-box"><span>Admin Actions</span><b id="ana-admin-logs">0</b></div>
+        </div>
+        <div id="activity-log-list"></div>
+      </div>
+    </div>
+
+    <!-- PROFILE MODAL -->
+    <div id="profile-overlay" class="overlay">
+      <div class="modal-box-center">
+        <h2>Global Industries</h2>
+        <p>Enter your full name to identify your updates on the live activity board:</p>
+        <input type="text" id="profile-name-input" class="pin-input" placeholder="Your Name" style="letter-spacing: normal;">
+        <button class="btn btn-primary" onclick="saveProfile()">Enter Portal</button>
+      </div>
+    </div>
+
+    <!-- LOGIN MODAL -->
+    <div id="login-overlay" class="overlay">
+      <div class="modal-box-center">
+        <button class="close-btn" onclick="closeModal('login-overlay')">&times;</button>
+        <h2>System Access</h2>
+        <p>Enter your 4-digit access PIN:</p>
+        <input type="password" id="admin-pwd" class="pin-input" placeholder="****" inputmode="numeric" maxlength="4">
+        <button class="btn btn-primary" onclick="checkPassword()">Unlock Access</button>
+        <p id="pwd-error" style="color:var(--danger); font-size: 14px; margin-top: 16px; display: none; font-weight:800;">Invalid PIN provided.</p>
+      </div>
+    </div>
+    
+    <!-- SITE MANAGER MODAL -->
+    <div id="site-manager-modal" class="overlay">
+      <div class="modal-box-center">
+        <button class="close-btn" onclick="closeModal('site-manager-modal')">&times;</button>
+        <h2 id="sm-title">Manage Structure</h2>
+        <p id="sm-desc">A Site is a major geographical location. A Group is a subgroup within that site.</p>
+        <input type="hidden" id="sm-action-type">
+        <input type="text" id="sm-input" class="pin-input" style="letter-spacing: normal; font-size: 18px;" placeholder="Enter Name...">
+        <button class="btn btn-primary" onclick="executeSiteManager()">Save Changes</button>
+      </div>
+    </div>
+
+    <header>
+      <div class="letterhead-container">
+        <div class="letterhead-top">
+          <div class="logo-container">
+            <svg viewBox="0 0 100 100" width="100%" height="100%">
+              <defs>
+                <linearGradient id="globeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+                  <stop offset="0%" stop-color="#A67B5B" /><stop offset="100%" stop-color="#70441d" />
+                </linearGradient>
+              </defs>
+              <circle cx="50" cy="50" r="45" stroke="url(#globeGrad)" stroke-width="4" fill="none" />
+              <ellipse cx="50" cy="50" rx="18" ry="45" stroke="url(#globeGrad)" stroke-width="3" fill="none" />
+              <line x1="6" y1="50" x2="94" y2="50" stroke="url(#globeGrad)" stroke-width="3" />
+              <rect x="-2" y="36" width="104" height="28" fill="url(#globeGrad)" rx="3" />
+              <text x="50" y="56" fill="#FFFFFF" font-family="'Arial Black', sans-serif" font-size="20" font-weight="900" letter-spacing="3" text-anchor="middle">GI</text>
+            </svg>
           </div>
-        `;
-      }
-    };
-  </script>
-
-  <div id="toast"><span id="toast-msg">System Ready</span></div>
-
-  <!-- CONFLICT DETECTOR OVERLAY -->
-  <div id="conflict-overlay" class="overlay" style="z-index: 100000;">
-    <div class="modal-box-center" style="border-top: 6px solid var(--danger);">
-      <h2>⚠️ Sync Conflict Detected</h2>
-      <p style="color: var(--danger); font-weight: bold;">Another user just modified this group while you were working.</p>
-      <p style="font-size:12px;">If you force save, you will overwrite their changes. If you reload, you will lose your recent unsaved edits.</p>
-      <div style="display: flex; gap: 10px; margin-top: 15px;">
-        <button class="btn btn-outline" style="flex:1;" onclick="resolveConflict('reload')">🔄 Reload Cloud Data</button>
-        <button class="btn btn-danger" style="flex:1;" onclick="resolveConflict('force')">⚠️ Force Override</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ADVANCED LIVE ACTIVITY PANEL -->
-  <div id="activity-panel" class="activity-panel">
-    <div class="activity-header">
-      <h3 style="font-size: 18px;">Live Portal Analytics</h3>
-      <button style="background:none; border:none; color:white; font-size: 26px; cursor:pointer;" onclick="toggleActivityPanel()">&times;</button>
-    </div>
-    <div class="activity-body">
-      
-      <h4 class="ana-heading">System Diagnostics</h4>
-      <div class="ana-grid">
-         <div class="ana-box"><span>Ping</span><b id="ana-ping">--</b></div>
-         <div class="ana-box"><span>CPU Est.</span><b id="ana-cpu">--</b></div>
-         <div class="ana-box"><span>Uptime</span><b id="ana-uptime">00:00</b></div>
-         <div class="ana-box"><span>Packet Loss</span><b class="text-success">0.00%</b></div>
-         <div class="ana-box"><span>Encryption</span><b class="text-success">AES-256</b></div>
-         <div class="ana-box"><span>Cloud Node</span><b>Asia-SE1</b></div>
-         <div class="ana-box"><span>Total Syncs</span><b id="ana-syncs">0</b></div>
-         <div class="ana-box"><span>Payload</span><b id="ana-payload">0 KB</b></div>
-         <div class="ana-box"><span>Database</span><b class="text-success">Connected</b></div>
-      </div>
-
-      <h4 class="ana-heading">Site Operations</h4>
-      <div class="ana-grid">
-         <div class="ana-box"><span>Active Groups</span><b id="ana-zones">0</b></div>
-         <div class="ana-box"><span>Workforce</span><b id="ana-workforce">0</b></div>
-         <div class="ana-box"><span>Officials</span><b id="ana-kp">0</b></div>
-         <div class="ana-box"><span>Attend. Rate</span><b id="ana-attend-rate">0%</b></div>
-         <div class="ana-box"><span>Rain Days</span><b id="ana-rain">0</b></div>
-         <div class="ana-box"><span>Mat. Activity</span><b id="ana-mat">0</b></div>
-      </div>
-
-      <h4 class="ana-heading">Financial Overview (Monthly)</h4>
-      <div class="ana-grid">
-         <div class="ana-box"><span>Gross Wage</span><b id="ana-gross">₹0</b></div>
-         <div class="ana-box"><span>Total Adv.</span><b id="ana-adv">₹0</b></div>
-         <div class="ana-box"><span>Total OT</span><b id="ana-ot">0h</b></div>
-      </div>
-      <div class="ana-box" style="margin-top: 10px; background: #FFFBEB; border-color: #FCD34D;">
-         <span>Net Burn / Total Payable</span><b id="ana-net" style="color: #B45309; font-size: 20px;">₹0</b>
-      </div>
-
-      <h4 class="ana-heading">Network Presence</h4>
-      <div class="ana-grid" style="grid-template-columns: 1fr 1fr;">
-         <div class="ana-box"><span>Active Sessions</span><b id="ana-sessions">1</b></div>
-         <div class="ana-box"><span>Peak Users</span><b id="ana-peak">1</b></div>
-         <div class="ana-box"><span>Mobile Div.</span><b id="ana-mobile">0%</b></div>
-         <div class="ana-box"><span>Desktop Div.</span><b id="ana-desktop">0%</b></div>
-      </div>
-      <div id="online-users-list" style="margin: 12px 0 20px 0;"></div>
-
-      <h4 class="ana-heading">Audit Log</h4>
-      <div class="ana-grid" style="grid-template-columns: 1fr 1fr; margin-bottom:12px;">
-         <div class="ana-box"><span>Today's Logs</span><b id="ana-logs">0</b></div>
-         <div class="ana-box"><span>Admin Actions</span><b id="ana-admin-logs">0</b></div>
-      </div>
-      <div id="activity-log-list"></div>
-
-    </div>
-  </div>
-
-  <div id="profile-overlay" class="overlay">
-    <div class="modal-box-center">
-      <h2>Global Industries</h2>
-      <p>Enter your full name to identify your updates on the live activity board:</p>
-      <input type="text" id="profile-name-input" class="pin-input" placeholder="Your Name" style="letter-spacing: normal;">
-      <button class="btn btn-primary" onclick="saveProfile()">Enter Portal</button>
-    </div>
-  </div>
-
-  <div id="login-overlay" class="overlay">
-    <div class="modal-box-center">
-      <button class="close-btn" onclick="closeModal('login-overlay')">&times;</button>
-      <h2>System Access</h2>
-      <p>Enter your 4-digit access PIN:</p>
-      <input type="password" id="admin-pwd" class="pin-input" placeholder="****" inputmode="numeric" maxlength="4">
-      <button class="btn btn-primary" onclick="checkPassword()">Unlock Access</button>
-      <p id="pwd-error" style="color:var(--danger); font-size: 14px; margin-top: 16px; display: none; font-weight:800;">Invalid PIN provided.</p>
-    </div>
-  </div>
-  
-  <div id="site-manager-modal" class="overlay">
-    <div class="modal-box-center">
-      <button class="close-btn" onclick="closeModal('site-manager-modal')">&times;</button>
-      <h2 id="sm-title">Manage Structure</h2>
-      <p id="sm-desc">A Site is a major geographical location. A Group is a subgroup within that site.</p>
-      <input type="hidden" id="sm-action-type">
-      <input type="text" id="sm-input" class="pin-input" style="letter-spacing: normal; font-size: 18px;" placeholder="Enter Name...">
-      <button class="btn btn-primary" onclick="executeSiteManager()">Save Changes</button>
-    </div>
-  </div>
-
-  <header>
-    <div class="letterhead-container">
-      <div class="letterhead-top">
-        <div class="logo-container">
-          <svg viewBox="0 0 100 100" width="100%" height="100%">
-            <defs>
-              <linearGradient id="globeGrad" x1="0%" y1="0%" x2="100%" y2="100%">
-                <stop offset="0%" stop-color="#A67B5B" /><stop offset="100%" stop-color="#70441d" />
-              </linearGradient>
-            </defs>
-            <circle cx="50" cy="50" r="45" stroke="url(#globeGrad)" stroke-width="4" fill="none" />
-            <ellipse cx="50" cy="50" rx="18" ry="45" stroke="url(#globeGrad)" stroke-width="3" fill="none" />
-            <line x1="6" y1="50" x2="94" y2="50" stroke="url(#globeGrad)" stroke-width="3" />
-            <rect x="-2" y="36" width="104" height="28" fill="url(#globeGrad)" rx="3" />
-            <text x="50" y="56" fill="#FFFFFF" font-family="'Arial Black', sans-serif" font-size="20" font-weight="900" letter-spacing="3" text-anchor="middle">GI</text>
-          </svg>
+          <div class="title-container"><span class="title-global">Global</span><span class="title-industries">Industries</span></div>
         </div>
-        <div class="title-container"><span class="title-global">Global</span><span class="title-industries">Industries</span></div>
-      </div>
-      <div class="regd-office"><b>Regd. Office :</b> Thokrichak, P.O. Garahra, Via Barauni, Dist. Begusarai, Bihar- 851 126.</div>
-    </div>
-
-    <div class="app-control-bar">
-      <div class="site-selector-wrap" id="site-dropdown-container">
-        <span class="site-label">SITE:</span>
-        <div class="custom-select" onclick="toggleDropdown()"><span id="selected-site-label">Loading...</span> <span>▼</span></div>
-        <div class="custom-dropdown-menu" id="site-dropdown"></div>
-      </div>
-      <div class="status-group">
-        <div class="live-clock-badge" id="system-live-clock">--:--:--</div>
-        <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
-        <div class="user-profile-badge" id="profile-display" onclick="toggleActivityPanel()" title="View Analytics & Activity">👤 User</div>
-        <button id="auth-status-btn" onclick="toggleAuth()">🔒 View Only</button>
-      </div>
-    </div>
-  </header>
-<div class="container">
-    
-    <!-- DASHBOARD GRID -->
-    <div class="dashboard-grid">
-      <div class="stat-card">
-        <span class="stat-label">👷 Workers</span>
-        <span class="stat-value" id="stat-total-workers">0</span>
-      </div>
-      <div class="stat-card success">
-        <span class="stat-label" id="lbl-present-today">✅ Present</span>
-        <span class="stat-value" id="stat-present-today">0 / 0</span>
-      </div>
-      <div class="stat-card warning">
-        <span class="stat-label">⏱️ Overtime</span>
-        <span class="stat-value" id="stat-total-ot">0 hrs</span>
-      </div>
-      <div class="stat-card accent">
-        <span class="stat-label">💰 Payable</span>
-        <span class="stat-value" id="stat-total-balance">₹0</span>
-      </div>
-    </div>
-
-    <!-- NAVIGATION TABS -->
-    <div class="nav-tabs">
-      <button class="tab-btn active" onclick="switchTab('daily-view', this)">📅 Daily</button>
-      <button class="tab-btn special-tab" onclick="switchTab('key-person-view', this)">👔 Key Persons</button>
-      <button class="tab-btn" onclick="switchTab('dpr-view', this)">📝 DPR & Weather</button>
-      <button class="tab-btn" onclick="switchTab('notes-view', this)">📓 Notes Feed</button>
-      <button class="tab-btn" onclick="switchTab('monthly-view', this)">📊 Monthly</button>
-      <button class="tab-btn" onclick="switchTab('worker-view', this)">👷 Directory</button>
-      <button class="tab-btn" onclick="switchTab('slips-view', this)">🧾 Slips</button>
-      <button class="tab-btn" onclick="switchTab('chat-view', this)">💬 Live Chat</button>
-    </div>
-
-    <!-- TOOLBAR & DATE CONTROLS -->
-    <div class="toolbar">
-      <div style="display:flex; gap:14px; flex-wrap:wrap;">
-        <select id="month-select" onchange="changeMonth()" style="flex:1; min-width: 150px;"></select>
-        <div id="daily-date-picker-wrap" style="flex:1; min-width: 150px;"><select id="day-select" onchange="handleDayChange()"></select></div>
-      </div>
-      
-      <div id="edit-controls" style="display:none; gap:14px; margin-top:14px; flex-wrap:wrap;">
-        <button class="btn btn-outline" onclick="openAddWorkerModal('worker')" style="color:var(--secondary); border-color:var(--secondary); flex:1;" id="btn-add-worker">➕ Add Worker</button>
-        <button class="btn btn-outline special-tab" onclick="openAddWorkerModal('key_person')" style="flex:1;" id="btn-add-kp">➕ Add Key Person</button>
-        <button class="btn btn-outline" onclick="forceSyncProcess()" style="flex:1;">🔄 Sync Cloud</button>
-        <button class="btn btn-danger" onclick="wipeZoneData()" style="flex:1; display:none;" id="btn-clear-group" title="Deletes all workers in this group">🗑️️ Clear Group Data</button>
+        <div class="regd-office"><b>Regd. Office :</b> Thokrichak, P.O. Garahra, Via Barauni, Dist. Begusarai, Bihar- 851 126.</div>
       </div>
 
-      <div style="display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;">
-         <button class="btn btn-success" style="flex:1;" onclick="exportToExcel()">📊 Export Excel (.xlsx)</button>
-         <button class="btn btn-primary" style="flex:1;" onclick="exportDatabase()">💾 Backup DB</button>
-      </div>
-    </div>
-
-    <!-- TAB 1: DAILY VIEW WITH SEARCH & MARK ALL PRESENT -->
-    <div id="daily-view" class="tab-content active">
-      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
-         <h3 style="color:var(--primary); font-size:20px;">Labour Attendance</h3>
-      </div>
-      
-      <!-- Roll-Up Banner for Main Site view -->
-      <div id="rollup-alert-daily" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
-        🌍 <b>Master Roll-Up View Active:</b> Viewing combined attendance across this site. Editing disabled in master view.
-      </div>
-
-      <div class="search-filter-bar">
-        <div class="search-input-box">
-          <span class="search-icon">🔍</span>
-          <input type="text" id="worker-search-input" placeholder="Search worker name or trade..." oninput="renderDailyView()">
+      <div class="app-control-bar">
+        <div class="site-selector-wrap" id="site-dropdown-container">
+          <span class="site-label">SITE:</span>
+          <div class="custom-select" onclick="toggleDropdown()"><span id="selected-site-label">Loading...</span> <span>▼</span></div>
+          <div class="custom-dropdown-menu" id="site-dropdown"></div>
         </div>
-        <button class="quick-action-btn" id="btn-mark-all" onclick="markAllWorkersPresent()">✅ Mark All Present</button>
-      </div>
-
-      <div class="worker-daily-list" id="daily-list-container"></div>
-    </div>
-
-    <!-- TAB 2: STARRED KEY PERSON VIEW -->
-    <div id="key-person-view" class="tab-content">
-      <h3 style="color:#B45309; font-size:20px; margin-bottom:16px;">Officials & Key Personnel</h3>
-      
-      <div id="kp-alert" class="empty-state" style="display:none; background:#FFFBEB; border-color:#FCD34D; color:#92400E;">
-        Key Personnel attendance is centralized. Please select the <b>Master Roll-Up</b> (Main Site) in the dropdown to view officials.
-      </div>
-      
-      <div id="kp-master-header" style="display:none; text-align:center; padding: 15px; background: #FEF9C3; border-radius: 12px; margin-bottom: 20px; border: 1px solid #FDE047;">
-         <h2 style="color: #92400E; margin-bottom: 5px;">⭐ Site Command Center ⭐</h2>
-         <p style="color: #B45309; font-size: 13px; font-weight: 700;">Executive Officials & Supervisors</p>
-      </div>
-
-      <div class="worker-daily-list" id="kp-list-container"></div>
-    </div>
-
-    <!-- TAB 3: UPGRADED DPR & INVENTORY VIEW -->
-    <div id="dpr-view" class="tab-content">
-      <div style="display:flex; justify-content:space-between; margin-bottom: 16px; align-items:center; flex-wrap:wrap; gap:10px;">
-         <h3 style="color:var(--primary); font-size:20px;">Daily Progress Report & Inventory</h3>
-         <button class="btn btn-whatsapp btn-small" onclick="shareDPRWhatsApp()" style="width:auto; border-radius:20px;">📲 Share WhatsApp</button>
-      </div>
-      
-      <div class="dpr-section">
-        <h4>Site Weather & Rain Logs</h4>
-        <div style="display:flex; gap:16px; margin-bottom:16px;">
-          <select id="dpr-weather-select" onchange="checkWeatherCondition()" onclick="requireAuthClick(this)" style="flex:1;">
-            <option>☀️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
-          </select>
+        <div class="status-group">
+          <div class="live-clock-badge" id="system-live-clock">--:--:--</div>
+          <button class="btn-icon" onclick="toggleTheme()" title="Toggle Theme">🌙</button>
+          <div class="user-profile-badge" id="profile-display" onclick="toggleActivityPanel()" title="View Analytics & Activity">👤 User</div>
+          <button id="auth-status-btn" onclick="toggleAuth()">🔒 View Only</button>
         </div>
-        <div id="rain-settings" style="display:none; gap:16px; background:rgba(59,130,246,0.08); padding:16px; border-radius:12px; border:1px solid #BFDBFE;">
-           <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Rain Start Time</label><input type="time" id="dpr-rain-start" onblur="autoSaveDPR()" style="margin-top:6px;"></div>
-           <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Rain End Time</label><input type="time" id="dpr-rain-end" onblur="autoSaveDPR()" style="margin-top:6px;"></div>
-           <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Work Stopped?</label><select id="dpr-work-stopped" onchange="autoSaveDPR()" style="margin-top:6px;"><option>No</option><option>Yes</option></select></div>
+      </div>
+    </header>
+
+    <div class="container">
+      <div class="dashboard-grid">
+        <div class="stat-card">
+          <span class="stat-label">👷 Workers</span>
+          <span class="stat-value" id="stat-total-workers">0</span>
+        </div>
+        <div class="stat-card success">
+          <span class="stat-label" id="lbl-present-today">✅ Present</span>
+          <span class="stat-value" id="stat-present-today">0 / 0</span>
+        </div>
+        <div class="stat-card warning">
+          <span class="stat-label">⏱️ Overtime</span>
+          <span class="stat-value" id="stat-total-ot">0 hrs</span>
+        </div>
+        <div class="stat-card accent">
+          <span class="stat-label">💰 Payable</span>
+          <span class="stat-value" id="stat-total-balance">₹0</span>
         </div>
       </div>
 
-      <div class="dpr-section">
-        <h4>Work Allocation</h4>
-        <textarea id="dpr-work-text" class="dpr-textarea" placeholder="E.g. Column casting at Platform 1..." onblur="autoSaveDPR()" onclick="requireAuthClick(this)"></textarea>
-      </div>
-      
-      <div class="dpr-section">
-        <h4>📥 Materials Received <button class="btn btn-outline btn-small" onclick="addMaterialRow('received')" id="btn-add-mat-rec">+ Add</button></h4>
-        <div id="dpr-mat-received-list"></div>
-      </div>
-
-      <div class="dpr-section">
-        <h4>📤 Materials Consumed <button class="btn btn-outline btn-small" onclick="addMaterialRow('consumed')" id="btn-add-mat-con">+ Add</button></h4>
-        <div id="dpr-mat-consumed-list"></div>
+      <div class="nav-tabs">
+        <button class="tab-btn active" onclick="switchTab('daily-view', this)">📅 Daily</button>
+        <button class="tab-btn special-tab" onclick="switchTab('key-person-view', this)">👔 Officials</button>
+        <button class="tab-btn" onclick="switchTab('dpr-view', this)">📝 DPR & Weather</button>
+        <button class="tab-btn" onclick="switchTab('notes-view', this)">📓 Site Timeline</button>
+        <button class="tab-btn" onclick="switchTab('monthly-view', this)">📊 Monthly</button>
+        <button class="tab-btn" onclick="switchTab('worker-view', this)">👷 Directory</button>
+        <button class="tab-btn" onclick="switchTab('slips-view', this)">🧾 Slips</button>
+        <button class="tab-btn report-tab" onclick="switchTab('report-view', this)">📈 Custom Report</button>
       </div>
 
-      <div class="dpr-section" style="background:var(--bg); border: 2px dashed var(--border);">
-        <h4>📦 Real-Time Live Stock at Site</h4>
-        <div id="live-stock-summary" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
-          <span style="color:var(--text-muted); font-size:13px; font-style:italic;">Add received and consumed materials above to calculate live balance stock.</span>
+      <div class="toolbar">
+        <div style="display:flex; gap:14px; flex-wrap:wrap;">
+          <select id="month-select" onchange="changeMonth()" style="flex:1; min-width: 150px;"></select>
+          <div id="daily-date-picker-wrap" style="flex:1; min-width: 150px;"><select id="day-select" onchange="handleDayChange()"></select></div>
+        </div>
+        
+        <div id="edit-controls" style="display:none; gap:14px; margin-top:14px; flex-wrap:wrap;">
+          <button class="btn btn-outline" onclick="openAddWorkerModal('worker')" style="color:var(--secondary); border-color:var(--secondary); flex:1;" id="btn-add-worker">➕ Add Worker</button>
+          <button class="btn btn-outline special-tab" onclick="openAddWorkerModal('key_person')" style="flex:1;" id="btn-add-kp">➕ Add Key Person</button>
+          <button class="btn btn-outline" onclick="forceSyncProcess()" style="flex:1;">🔄 Sync Cloud</button>
+          <button class="btn btn-danger" onclick="wipeZoneData()" style="flex:1; display:none;" id="btn-clear-group" title="Deletes all workers in this group">🗑 Clear Group Data</button>
+        </div>
+
+        <div style="display:flex; gap:14px; margin-top:14px; flex-wrap:wrap;">
+           <button class="btn btn-success" style="flex:1;" onclick="exportToExcel()">📊 Export Excel (.xlsx)</button>
+           <button class="btn btn-primary" style="flex:1;" onclick="exportDatabase()">💾 Backup DB</button>
         </div>
       </div>
-    </div>
+<!-- TAB 1: DAILY VIEW -->
+      <div id="daily-view" class="tab-content active">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+           <h3 style="color:var(--primary); font-size:20px;">Labour Attendance</h3>
+        </div>
+        
+        <div id="rollup-alert-daily" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
+          🌍 <b>Master Roll-Up View Active:</b> Viewing combined attendance across this site. Editing disabled in master view.
+        </div>
 
-    <!-- TAB 4: NEW TIMELINE NOTES VIEW -->
-    <div id="notes-view" class="tab-content">
-      <div class="dpr-section">
-         <h3 style="color:var(--primary); font-size:18px; margin-bottom: 12px;">Site Timeline & To-Do List</h3>
-         
-         <div style="display:flex; gap:10px; margin-bottom: 20px;">
-            <input type="text" id="timeline-input-text" placeholder="Type a note or checklist item..." style="flex:1;" onkeypress="if(event.key==='Enter') addTimelineNote()">
-            <button class="btn btn-primary" onclick="addTimelineNote()" style="width:auto; padding: 12px 20px;">📌 Post</button>
-         </div>
+        <div class="search-filter-bar">
+          <div class="search-input-box">
+            <span class="search-icon">🔍</span>
+            <input type="text" id="worker-search-input" placeholder="Search worker name or trade..." oninput="renderDailyView()">
+          </div>
+          <button class="quick-action-btn" id="btn-mark-all" onclick="markAllWorkersPresent()">✅ Mark All Present</button>
+        </div>
 
-         <div id="timeline-feed" style="display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding: 16px; border-radius: 12px; min-height: 200px; border: 1px solid var(--border);">
-            <div class="empty-state">No notes added to the timeline today.</div>
-         </div>
+        <div class="worker-daily-list" id="daily-list-container"></div>
       </div>
-    </div>
-    
-    <!-- TAB 5: MONTHLY TABLE -->
-    <div id="monthly-view" class="tab-content">
-      <div id="rollup-alert-monthly" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
-        🌍 <b>Master Roll-Up View Active:</b> Consolidated monthly attendance for all subgroups combined.
-      </div>
-      <div class="table-container">
-        <table id="monthly-table">
-          <thead>
-            <tr><th rowspan="2" class="sticky-col">NAME</th><th rowspan="2">TRADE</th><th colspan="2">TOTAL</th><th rowspan="2">RATE</th><th rowspan="2">AMOUNT</th><th rowspan="2">ADVANCE</th><th rowspan="2">BALANCE</th></tr>
-            <tr id="sub-headers-row"></tr>
-          </thead>
-          <tbody id="monthly-table-body"></tbody>
-          <tfoot><tr id="monthly-table-total" class="total-row"></tr></tfoot>
-        </table>
-      </div>
-    </div>
 
-    <!-- TAB 6: WORKER DIRECTORY -->
-    <div id="worker-view" class="tab-content">
-      <div id="rollup-alert-worker" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
-        🌍 <b>Master Roll-Up View Active:</b> Viewing full workforce directory across all subgroups.
+      <!-- TAB 2: KEY PERSON VIEW -->
+      <div id="key-person-view" class="tab-content">
+        <h3 style="color:#B45309; font-size:20px; margin-bottom:16px;">Officials & Key Personnel</h3>
+        
+        <div id="kp-alert" class="empty-state" style="display:none; background:#FFFBEB; border-color:#FCD34D; color:#92400E;">
+          Key Personnel attendance is centralized. Please select the <b>Master Roll-Up</b> (Main Site) in the dropdown to view officials.
+        </div>
+        
+        <div id="kp-master-header" style="display:none; text-align:center; padding: 15px; background: #FEF9C3; border-radius: 12px; margin-bottom: 20px; border: 1px solid #FDE047;">
+           <h2 style="color: #92400E; margin-bottom: 5px;">⭐ Site Command Center ⭐</h2>
+           <p style="color: #B45309; font-size: 13px; font-weight: 700;">Executive Officials & Supervisors</p>
+        </div>
+
+        <div class="worker-daily-list" id="kp-list-container"></div>
       </div>
-      <div class="worker-daily-list" id="worker-mgmt-body"></div>
-    </div>
-    
-    <!-- TAB 7: SLIPS -->
-    <div id="slips-view" class="tab-content">
-      <div class="dpr-section">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
-          <select id="slip-worker-select" onchange="renderWageSlip()" style="flex:2; min-width:200px;"></select>
-          <select id="slip-theme-select" onchange="renderWageSlip()" style="flex:1; min-width:140px;">
-            <option value="theme-navy">Classic Navy</option>
-            <option value="theme-slate">Modern Slate</option>
-            <option value="theme-amber">Industrial Amber</option>
-          </select>
-          <div style="display:flex; gap:8px;">
-            <button class="btn btn-outline" style="width:auto; padding:12px 16px;" onclick="window.print()">🖨️ Print</button>
-            <button class="btn btn-primary" style="width:auto; padding:12px 16px;" onclick="downloadSlipAsPDF()">📄 PDF</button>
+
+      <!-- TAB 3: DPR & INVENTORY VIEW -->
+      <div id="dpr-view" class="tab-content">
+        <div style="display:flex; justify-content:space-between; margin-bottom: 16px; align-items:center; flex-wrap:wrap; gap:10px;">
+           <h3 style="color:var(--primary); font-size:20px;">Daily Progress Report & Inventory</h3>
+           <button class="btn btn-whatsapp btn-small" onclick="shareDPRWhatsApp()" style="width:auto; border-radius:20px;">📲 Share WhatsApp</button>
+        </div>
+        
+        <div class="dpr-section">
+          <h4>Site Weather & Rain Logs</h4>
+          <div style="display:flex; gap:16px; margin-bottom:16px;">
+            <select id="dpr-weather-select" onchange="checkWeatherCondition()" onclick="requireAuthClick(this)" style="flex:1;">
+              <option>☀️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
+            </select>
+          </div>
+          <div id="rain-settings" style="display:none; gap:16px; background:rgba(59,130,246,0.08); padding:16px; border-radius:12px; border:1px solid #BFDBFE;">
+             <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Rain Start Time</label><input type="time" id="dpr-rain-start" onblur="autoSaveDPR()" style="margin-top:6px;"></div>
+             <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Rain End Time</label><input type="time" id="dpr-rain-end" onblur="autoSaveDPR()" style="margin-top:6px;"></div>
+             <div style="flex:1;"><label style="font-size:12px; font-weight:800;">Work Stopped?</label><select id="dpr-work-stopped" onchange="autoSaveDPR()" style="margin-top:6px;"><option>No</option><option>Yes</option></select></div>
           </div>
         </div>
-        <div id="wage-slip-display" style="margin-top:20px;"></div>
-      </div>
-    </div>
 
-    <!-- TAB 8: LIVE CHAT TAB CONTENT -->
-    <div id="chat-view" class="tab-content">
-      <div class="dpr-section" style="display: flex; flex-direction: column; height: 100%; min-height: 400px;">
-        <h4>Site Team Live Collaboration</h4>
-        <div class="chat-container">
-          <div class="chat-messages" id="chat-messages-list"></div>
-          <div class="chat-input-area">
-            <input type="text" id="chat-input-text" placeholder="Type message to site team..." onkeypress="if(event.key==='Enter') sendChatMessage()">
-            <button class="btn btn-primary" style="width: auto; padding: 10px 20px;" onclick="sendChatMessage()">Send 🚀</button>
+        <div class="dpr-section">
+          <h4>Work Allocation</h4>
+          <textarea id="dpr-work-text" class="dpr-textarea" placeholder="E.g. Column casting at Platform 1..." onblur="autoSaveDPR()" onclick="requireAuthClick(this)"></textarea>
+        </div>
+        
+        <div class="dpr-section">
+          <h4>📥 Materials Received <button class="btn btn-outline btn-small" onclick="addMaterialRow('received')" id="btn-add-mat-rec">+ Add</button></h4>
+          <div id="dpr-mat-received-list"></div>
+        </div>
+
+        <div class="dpr-section">
+          <h4>📤 Materials Consumed <button class="btn btn-outline btn-small" onclick="addMaterialRow('consumed')" id="btn-add-mat-con">+ Add</button></h4>
+          <div id="dpr-mat-consumed-list"></div>
+        </div>
+
+        <div class="dpr-section" style="background:var(--bg); border: 2px dashed var(--border);">
+          <h4>📦 Real-Time Live Stock at Site</h4>
+          <div id="live-stock-summary" style="display:flex; gap:10px; flex-wrap:wrap; margin-top:10px;">
+            <span style="color:var(--text-muted); font-size:13px; font-style:italic;">Add received and consumed materials above to calculate live balance stock.</span>
           </div>
         </div>
       </div>
+
+      <!-- TAB 4: TIMELINE NOTES VIEW -->
+      <div id="notes-view" class="tab-content">
+        <div class="dpr-section">
+           <h3 style="color:var(--primary); font-size:18px; margin-bottom: 12px;">Site Timeline & To-Do List</h3>
+           
+           <div style="display:flex; gap:10px; margin-bottom: 20px;">
+              <input type="text" id="timeline-input-text" placeholder="Type a note or checklist item..." style="flex:1;" onkeypress="if(event.key==='Enter') addTimelineNote()">
+              <button class="btn btn-primary" onclick="addTimelineNote()" style="width:auto; padding: 12px 20px;">📌 Post</button>
+           </div>
+
+           <div id="timeline-feed" style="display: flex; flex-direction: column; gap: 12px; background: var(--bg); padding: 16px; border-radius: 12px; min-height: 200px; border: 1px solid var(--border);">
+              <div class="empty-state">No notes added to the timeline today.</div>
+           </div>
+        </div>
+      </div>
+      
+      <!-- TAB 5: MONTHLY TABLE -->
+      <div id="monthly-view" class="tab-content">
+        <div id="rollup-alert-monthly" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
+          🌍 <b>Master Roll-Up View Active:</b> Consolidated monthly attendance for all subgroups combined.
+        </div>
+        <div class="table-container">
+          <table id="monthly-table">
+            <thead>
+              <tr><th rowspan="2" class="sticky-col">NAME</th><th rowspan="2">TRADE</th><th colspan="2">TOTAL</th><th rowspan="2">RATE</th><th rowspan="2">AMOUNT</th><th rowspan="2">ADVANCE</th><th rowspan="2">BALANCE</th></tr>
+              <tr id="sub-headers-row"></tr>
+            </thead>
+            <tbody id="monthly-table-body"></tbody>
+            <tfoot><tr id="monthly-table-total" class="total-row"></tr></tfoot>
+          </table>
+        </div>
+      </div>
+
+      <!-- TAB 6: WORKER DIRECTORY -->
+      <div id="worker-view" class="tab-content">
+        <div id="rollup-alert-worker" class="empty-state" style="display:none; background:#F0FDF4; border-color:#86EFAC; color:#166534; padding: 12px; margin-bottom: 16px;">
+          🌍 <b>Master Roll-Up View Active:</b> Viewing full workforce directory across all subgroups.
+        </div>
+        <div class="worker-daily-list" id="worker-mgmt-body"></div>
+      </div>
+      
+      <!-- TAB 7: SLIPS -->
+      <div id="slips-view" class="tab-content">
+        <div class="dpr-section">
+          <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:10px;">
+            <select id="slip-worker-select" onchange="renderWageSlip()" style="flex:2; min-width:200px;"></select>
+            <select id="slip-theme-select" onchange="renderWageSlip()" style="flex:1; min-width:140px;">
+              <option value="theme-navy">Classic Navy</option>
+              <option value="theme-slate">Modern Slate</option>
+              <option value="theme-amber">Industrial Amber</option>
+            </select>
+            <div style="display:flex; gap:8px;">
+              <button class="btn btn-outline" style="width:auto; padding:12px 16px;" onclick="window.print()">🖨️ Print</button>
+              <button class="btn btn-primary" style="width:auto; padding:12px 16px;" onclick="downloadSlipAsPDF()">📄 PDF</button>
+            </div>
+          </div>
+          <div id="wage-slip-display" style="margin-top:20px;"></div>
+        </div>
+      </div>
+
+      <!-- TAB 8: CUSTOM DATE-RANGE REPORT -->
+      <div id="report-view" class="tab-content">
+        <div class="dpr-section">
+          <h3 style="color:var(--primary); font-size:20px; margin-bottom: 12px;">📈 Custom Date-Range Report</h3>
+          <p style="font-size:13px; color:var(--text-muted); margin-bottom: 20px;">Select a specific date range to aggregate all attendance, overtime, net pay, and material usage.</p>
+          
+          <div style="display:flex; gap:16px; margin-bottom: 20px; flex-wrap: wrap;">
+            <div style="flex:1; min-width: 200px; background: var(--bg); padding: 12px; border-radius: 12px; border: 1px solid var(--border);">
+              <label style="font-size:12px; font-weight:800; color:var(--text-muted);">From Date</label>
+              <input type="date" id="report-start-date" style="margin-top:6px; background: var(--card-bg);">
+            </div>
+            <div style="flex:1; min-width: 200px; background: var(--bg); padding: 12px; border-radius: 12px; border: 1px solid var(--border);">
+              <label style="font-size:12px; font-weight:800; color:var(--text-muted);">To Date</label>
+              <input type="date" id="report-end-date" style="margin-top:6px; background: var(--card-bg);">
+            </div>
+          </div>
+          <div style="display:flex; gap:12px; margin-bottom: 20px; flex-wrap:wrap;">
+            <button class="btn btn-primary" onclick="generateCustomReport()" style="background:#9333EA; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Master Report</button>
+            <button class="btn btn-success" onclick="exportCustomReportExcel()" style="flex:1; display:none;" id="btn-rep-excel">📊 Export Excel</button>
+            <button class="btn btn-primary" onclick="exportCustomReportPDF()" style="flex:1; display:none;" id="btn-rep-pdf" style="background:#2563EB;">📄 Export PDF</button>
+            <button class="btn btn-whatsapp" onclick="exportCustomReportWhatsApp()" style="flex:1; display:none;" id="btn-rep-wa">📲 WhatsApp</button>
+          </div>
+          
+          <div id="report-results" style="margin-top: 24px; display: none;"></div>
+        </div>
+      </div>
+
+    </div> <!-- End Container -->
+
+    <!-- MODAL: WORKER REGISTRATION -->
+    <div class="overlay" id="worker-modal">
+      <div class="modal-box-center" style="max-width:450px;">
+        <button class="close-btn" onclick="closeModal('worker-modal')">&times;</button>
+        <h2 id="modal-worker-title" style="margin-bottom:20px;">Register Profile</h2>
+        <input type="hidden" id="edit-worker-id">
+        <input type="hidden" id="edit-worker-type">
+        <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Full Name</label><input type="text" id="w-name" placeholder="e.g. Ramesh Kumar" style="margin-bottom:12px;"></div>
+        <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Mobile Number</label><input type="tel" id="w-phone" placeholder="e.g. 9876543210" style="margin-bottom:12px;"></div>
+        <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Designation / Trade</label>
+          <input type="text" id="w-desig" list="trade-suggestions" placeholder="Select or type trade..." style="margin-bottom:12px;">
+          <datalist id="trade-suggestions">
+            <option value="Labor"><option value="Mason"><option value="Head Mason"><option value="Helper"><option value="Site Engineer"><option value="Project Manager"><option value="Bar Bender"><option value="Steel Fixer"><option value="Carpenter"><option value="Scaffolder"><option value="Electrician"><option value="Plumber"><option value="Welder"><option value="Welder (Argon)"><option value="Operator"><option value="Heavy Equipment Operator"><option value="Fitter"><option value="Rigger"><option value="Surveyor"><option value="Security Guard"><option value="Painter"><option value="Foreman"><option value="OWNER">
+          </datalist>
+        </div>
+        <div style="display:flex; gap:12px; margin-bottom:20px;" id="wage-input-row">
+          <div style="flex:1; text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Daily Rate (₹)</label><input type="number" id="w-rate" placeholder="e.g. 650" min="1"></div>
+          <div style="flex:1; text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Opening Adv (₹)</label><input type="number" id="w-adv" placeholder="0"></div>
+        </div>
+        <button class="btn btn-primary" onclick="saveWorker()" style="width:100%">Save Profile</button>
+      </div>
     </div>
 
-  </div> <!-- End Container -->
-
-  <!-- MODAL: WORKER REGISTRATION (Expanded Trades) -->
-  <div class="overlay" id="worker-modal">
-    <div class="modal-box-center" style="max-width:450px;">
-      <button class="close-btn" onclick="closeModal('worker-modal')">&times;</button>
-      <h2 id="modal-worker-title" style="margin-bottom:20px;">Register Profile</h2>
-      <input type="hidden" id="edit-worker-id">
-      <input type="hidden" id="edit-worker-type">
-      <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Full Name</label><input type="text" id="w-name" placeholder="e.g. Ramesh Kumar" style="margin-bottom:12px;"></div>
-      <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Mobile Number</label><input type="tel" id="w-phone" placeholder="e.g. 9876543210" style="margin-bottom:12px;"></div>
-      <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Designation / Trade</label>
-        <input type="text" id="w-desig" list="trade-suggestions" placeholder="Select or type trade..." style="margin-bottom:12px;">
-        <datalist id="trade-suggestions">
-          <option value="Labor">
-          <option value="Mason">
-          <option value="Head Mason">
-          <option value="Helper">
-          <option value="Site Engineer">
-          <option value="Project Manager">
-          <option value="Bar Bender">
-          <option value="Steel Fixer">
-          <option value="Carpenter">
-          <option value="Scaffolder">
-          <option value="Electrician">
-          <option value="Plumber">
-          <option value="Welder">
-          <option value="Welder (Argon)">
-          <option value="Operator">
-          <option value="Heavy Equipment Operator">
-          <option value="Fitter">
-          <option value="Rigger">
-          <option value="Surveyor">
-          <option value="Security Guard">
-          <option value="Painter">
-          <option value="Foreman">
-        </datalist>
-      </div>
-      <div style="display:flex; gap:12px; margin-bottom:20px;" id="wage-input-row">
-        <!-- Min 1 ensures no zero or negative wages -->
-        <div style="flex:1; text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Daily Rate (₹)</label><input type="number" id="w-rate" placeholder="e.g. 650" min="1"></div>
-        <div style="flex:1; text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Opening Adv (₹)</label><input type="number" id="w-adv" placeholder="0"></div>
-      </div>
-      <button class="btn btn-primary" onclick="saveWorker()" style="width:100%">Save Profile</button>
-    </div>
-  </div>
+  </div> <!-- End #main-app -->
 <script>
+    /* =========================================
+       0. CINEMATIC 3D WARP-STAR INTRO & GLOBE
+       ========================================= */
+    const introContainer = document.getElementById('intro-container');
+    const mainApp = document.getElementById('main-app');
+    
+    const scene = new THREE.Scene();
+    scene.fog = new THREE.FogExp2(0x000000, 0.015);
+    const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+    const renderer = new THREE.WebGLRenderer({ canvas: document.getElementById('intro-canvas'), alpha: true, antialias: true });
+    renderer.setSize(window.innerWidth, window.innerHeight);
+    renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+
+    // Warp-Speed Star Field with Collision Math (Particles never pass through globe)
+    const particlesCount = 3500;
+    const particlesGeometry = new THREE.BufferGeometry();
+    const posArray = new Float32Array(particlesCount * 3);
+    const velocityArray = new Float32Array(particlesCount * 3);
+    const colorsArray = new Float32Array(particlesCount * 3);
+    
+    const c1 = new THREE.Color(0x3B82F6);
+    const c2 = new THREE.Color(0xFFD700);
+    const c3 = new THREE.Color(0xFFFFFF);
+
+    for(let i = 0; i < particlesCount * 3; i += 3) { 
+        posArray[i] = (Math.random() - 0.5) * 300; 
+        posArray[i+1] = (Math.random() - 0.5) * 300;
+        posArray[i+2] = -150 - Math.random() * 200;
+        
+        velocityArray[i] = 0; 
+        velocityArray[i+1] = 0;
+        velocityArray[i+2] = 0.8 + Math.random() * 2.2;
+
+        const rand = Math.random();
+        let col = c3;
+        if(rand > 0.7) col = c1; else if(rand > 0.4) col = c2;
+        colorsArray[i] = col.r; colorsArray[i+1] = col.g; colorsArray[i+2] = col.b;
+    }
+    
+    particlesGeometry.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+    particlesGeometry.setAttribute('color', new THREE.BufferAttribute(colorsArray, 3));
+    const particlesMaterial = new THREE.PointsMaterial({ size: 0.6, vertexColors: true, transparent: true, opacity: 0.9, blending: THREE.AdditiveBlending });
+    const particlesMesh = new THREE.Points(particlesGeometry, particlesMaterial);
+    scene.add(particlesMesh);
+
+    // Clean Globe Mesh (No unwanted glow)
+    const globeRadius = 12;
+    const globeGroup = new THREE.Group();
+    scene.add(globeGroup);
+
+    const globeGeo = new THREE.SphereGeometry(globeRadius, 64, 64);
+    const globeMat = new THREE.MeshPhongMaterial({ color: 0x102A43, emissive: 0x0A192F, specular: 0x2D68C4, shininess: 30, wireframe: false });
+    const globeMesh = new THREE.Mesh(globeGeo, globeMat);
+    globeGroup.add(globeMesh);
+
+    const wireGeo = new THREE.SphereGeometry(globeRadius * 1.001, 24, 24);
+    const wireMat = new THREE.MeshBasicMaterial({ color: 0x3B82F6, wireframe: true, transparent: true, opacity: 0.15 });
+    const wireMesh = new THREE.Mesh(wireGeo, wireMat);
+    globeGroup.add(wireMesh);
+
+    globeGroup.position.set(0, 0, -30);
+
+    const ambientLight = new THREE.AmbientLight(0xffffff, 0.6);
+    scene.add(ambientLight);
+    const dirLight = new THREE.DirectionalLight(0xffffff, 1.5);
+    dirLight.position.set(20, 20, 10);
+    scene.add(dirLight);
+
+    camera.position.z = 10;
+    let introActive = true;
+    let isWarping = false;
+    let warpSpeedMultiplier = 1.0;
+
+    function animateIntro() {
+        if(!introActive) return;
+        requestAnimationFrame(animateIntro);
+        
+        const positions = particlesMesh.geometry.attributes.position.array;
+        const globePos = globeGroup.position;
+        const safeRadiusSq = (globeRadius * 1.4) * (globeRadius * 1.4);
+        
+        for(let i = 0; i < particlesCount * 3; i += 3) {
+            positions[i+2] += velocityArray[i+2] * warpSpeedMultiplier;
+            
+            const dx = positions[i] - globePos.x;
+            const dy = positions[i+1] - globePos.y;
+            const dz = positions[i+2] - globePos.z;
+            const distSq = dx*dx + dy*dy + dz*dz;
+            
+            if (distSq < safeRadiusSq) {
+                const dist = Math.sqrt(distSq);
+                const push = 1.2;
+                positions[i] += (dx / dist) * push;
+                positions[i+1] += (dy / dist) * push;
+            }
+
+            if(positions[i+2] > 15) {
+                positions[i] = (Math.random() - 0.5) * 300; 
+                positions[i+1] = (Math.random() - 0.5) * 300;
+                positions[i+2] = -250 - Math.random() * 50; 
+            }
+        }
+        particlesMesh.geometry.attributes.position.needsUpdate = true;
+        
+        globeGroup.rotation.y += 0.003 * warpSpeedMultiplier;
+        globeGroup.rotation.x += 0.001 * warpSpeedMultiplier;
+
+        renderer.render(scene, camera);
+    }
+    animateIntro();
+
+    introContainer.addEventListener('click', () => {
+        if(!introActive || isWarping) return;
+        isWarping = true;
+
+        const tl = gsap.timeline({
+            onComplete: () => {
+                introActive = false;
+                introContainer.style.display = 'none';
+                mainApp.style.display = 'flex';
+                gsap.to(mainApp, { opacity: 1, duration: 0.8, ease: "power2.out" });
+                gsap.to('.stat-card', { opacity: 1, y: 0, duration: 0.8, stagger: 0.15, ease: "back.out(1.7)", delay: 0.2 });
+            }
+        });
+
+        tl.to(document.querySelector('.intro-logo-wrapper'), { opacity: 0, scale: 1.5, duration: 0.4, ease: "power2.in" })
+          .to(document.querySelector('.enter-instruction'), { opacity: 0, duration: 0.2 }, "<")
+          .to(globeGroup.rotation, { y: Math.PI * 3, x: Math.PI, duration: 2.2, ease: "power3.inOut" }, "<")
+          .to(globeGroup.position, { z: -12, duration: 2.2, ease: "power3.inOut" }, "<")
+          .to(camera.position, { z: -4, duration: 2.2, ease: "power3.inOut" }, "<")
+          .to(window, {
+              duration: 2.2,
+              onUpdate: function() {
+                  warpSpeedMultiplier = 1.0 + (this.progress() * 8.0);
+              }
+          }, "<")
+          .to(introContainer, { opacity: 0, duration: 0.6 }, "-=0.5");
+    });
+
+    window.addEventListener('resize', () => {
+        if(introActive) {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+    });
+
     /* =========================================
        1. FIREBASE SETUP & GLOBALS
        ========================================= */
@@ -670,7 +826,6 @@
     let currentSite = localStorage.getItem('gi_last_site') || null;
     let currentSubgroup = localStorage.getItem('gi_last_sub') || null;
     
-    // Upgraded appState to handle the new Timeline Notes natively
     let appState = { workers: [], keyPersons: [], attendance: {}, kpAttendance: {}, advances: {}, dpr: {}, timeline: {} };
     let userName = localStorage.getItem('gi_user_profile') || '';
     let userRole = localStorage.getItem('gi_role') || 'viewer';
@@ -679,11 +834,8 @@
     const deviceType = /Mobi|Android|iPhone/i.test(navigator.userAgent) ? '📱 Mobile' : '💻 Desktop';
 
     let totalSyncs = 0; let peakUsers = 1; const sessionStartTime = Date.now();
-    let isMasterRollup = false;
-    let isSavingToCloud = false;
-    let pendingCloudState = null;
+    let isMasterRollup = false; let isSavingToCloud = false; let pendingCloudState = null;
 
-    // LIVE CURRENT DATE & CLOCK ENGINE
     function initLiveClock() {
       setInterval(() => {
         const now = new Date();
@@ -698,21 +850,22 @@
       else { document.getElementById('profile-display').innerHTML = `👤 ${userName}`; initPresence(); }
 
       generateMonthOptions(); populateDaySelector();
-      loadSitesFromCloud(); 
-      loadLocalState(); 
-      syncSiteDataFirebase(); 
-      updateAuthUI();
-      startAnalyticsEngine();
-      initChatSync();
-
+      loadSitesFromCloud(); loadLocalState(); syncSiteDataFirebase(); 
+      updateAuthUI(); startAnalyticsEngine();
+      
       document.addEventListener('click', (e) => {
         if(!e.target.closest('.site-selector-wrap')) document.getElementById('site-dropdown').classList.remove('active');
       });
+
+      document.getElementById('admin-pwd').addEventListener('input', function(e) {
+          if (this.value === '6767') {
+              document.body.classList.add('barrel-roll');
+              this.value = ''; 
+              setTimeout(() => document.body.classList.remove('barrel-roll'), 2500);
+          }
+      });
     }
 
-    /* =========================================
-       CRITICAL DATA SANITIZER
-       ========================================= */
     function sanitizeStructure(struct) {
       if (!struct) return []; 
       let sArr = Array.isArray(struct) ? struct : Object.values(struct);
@@ -749,29 +902,23 @@
       return state;
     }
 
-    /* =========================================
-       2. PRESENCE, ROLES & UPGRADED AUTH
-       ========================================= */
     function getStorageKey() { return `GI_DATA_${currentSite}_${currentSubgroup}`; }
     function showToast(m) { const t = document.getElementById('toast'); document.getElementById('toast-msg').textContent = m; t.style.bottom = '30px'; setTimeout(() => { t.style.bottom = '-80px'; }, 3000); }
     function toggleTheme() { const b = document.body; if(b.getAttribute('data-theme') === 'dark') { b.removeAttribute('data-theme'); localStorage.setItem('gi_theme', 'light'); } else { b.setAttribute('data-theme', 'dark'); localStorage.setItem('gi_theme', 'dark'); } }
 
     function saveProfile() {
       const name = document.getElementById('profile-name-input').value.trim();
-      if (!name || name === '') { alert("Please enter a valid name."); return; }
+      if (!name) { alert("Please enter a valid name."); return; }
       userName = name; localStorage.setItem('gi_user_profile', name); 
       document.getElementById('profile-overlay').style.display = 'none'; document.getElementById('profile-display').innerHTML = `👤 ${name}`; 
       initPresence(); logActivity("Joined the portal");
-      sendSystemChat(`🌟 ${userName} has joined the site portal.`);
     }
     
     function toggleActivityPanel() { document.getElementById('activity-panel').classList.toggle('open'); updateAdvancedAnalytics(); }
 
     function initPresence() {
       if (!userName) return;
-      db.ref('global/presence').off();
-      db.ref('global/activity').off();
-
+      db.ref('global/presence').off(); db.ref('global/activity').off();
       const userKey = userName.replace(/[^a-zA-Z0-9]/g,'') || 'user';
       const ref = db.ref(`global/presence/${userKey}`);
       db.ref('.info/connected').on('value', (s) => {
@@ -784,7 +931,7 @@
           Object.values(s.val()).forEach(u => { 
             count++; if(u.device && u.device.includes('Mobile')) mobiles++; else desktops++;
             const t = new Date(u.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            list.innerHTML += `<div class="online-tag"><div style="display:flex; align-items:center;"><div class="pulse-dot"></div> <b>${u.name}</b> <span style="font-weight:normal; color:var(--text-muted); margin-left:6px;">(${u.role})</span></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:11px; color:var(--text-muted);">Since ${t}</span><span class="device-icon" title="${u.device}">${u.device ? u.device.split(' ')[0] : '💻'}</span></div></div>`; 
+            list.innerHTML += `<div class="online-tag"><div style="display:flex; align-items:center;"><div class="pulse-dot"></div> <b>${u.name}</b> <span style="font-weight:normal; color:var(--text-muted); margin-left:6px;">(${u.role})</span></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:11px; color:var(--text-muted);">Since ${t}</span><span title="${u.device}">${u.device ? u.device.split(' ')[0] : '💻'}</span></div></div>`; 
           });
         }
         document.getElementById('ana-sessions').textContent = count;
@@ -797,10 +944,8 @@
       db.ref('global/activity').orderByChild('time').startAt(startOfDay).on('value', (s) => {
         const list = document.getElementById('activity-log-list'); list.innerHTML = ''; let lCount = 0; let aCount = 0;
         if(s.val()) {
-          const acts = Object.values(s.val()).reverse();
-          acts.forEach(a => { 
-            lCount++; 
-            if(a.action && (a.action.includes('Deleted') || a.action.includes('Wiped') || a.user.includes('Admin'))) aCount++;
+          Object.values(s.val()).reverse().forEach(a => { 
+            lCount++; if(a.action && (a.action.includes('Deleted') || a.action.includes('Wiped') || a.user.includes('Admin'))) aCount++;
             const t = new Date(a.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
             list.innerHTML += `<div class="log-item"><b>${a.user}</b>: ${a.action}<div class="log-time">${t}</div></div>`; 
           });
@@ -832,31 +977,12 @@
             document.getElementById('ana-zones').textContent = zCount;
             document.getElementById('ana-workforce').textContent = appState.workers.length;
             document.getElementById('ana-kp').textContent = appState.keyPersons.length;
-
             let rainDays = 0, matActivity = 0;
             Object.values(appState.dpr).forEach(d => {
                 if (d.rainStart || (d.weather && d.weather.includes('Rain'))) rainDays++;
                 matActivity += (d.matReceived ? d.matReceived.length : 0) + (d.matConsumed ? d.matConsumed.length : 0);
             });
             document.getElementById('ana-rain').textContent = rainDays; document.getElementById('ana-mat').textContent = matActivity;
-
-            let tGross = 0, tAdv = 0, tOT = 0, net = 0, presentDays = 0;
-            const mKey = getAttendanceMonthKey();
-            const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
-            let possibleDays = appState.workers.length * currentMonthDays;
-            
-            appState.workers.forEach(w => {
-                let wD = 0, wO = 0, wA = 0;
-                const monthAtt = appState.attendance[mKey] || {};
-                for(let i=1; i<=currentMonthDays; i++) { const r = monthAtt[w.id] && monthAtt[w.id][i]; if(r) { wD += (r.duty||0); wO += (r.ot||0); wA += (r.adv||0); } }
-                presentDays += wD; tOT += wO; tAdv += (appState.advances[w.id] || 0) + wA;
-                let amt = (wD * w.rate) + (wO * (w.rate/8)); tGross += amt; net += (amt - ((appState.advances[w.id] || 0) + wA));
-            });
-            document.getElementById('ana-gross').textContent = '₹' + Math.round(tGross);
-            document.getElementById('ana-adv').textContent = '₹' + Math.round(tAdv);
-            document.getElementById('ana-ot').textContent = tOT + 'h';
-            document.getElementById('ana-net').textContent = '₹' + Math.round(net);
-            document.getElementById('ana-attend-rate').textContent = possibleDays > 0 ? ((presentDays / possibleDays) * 100).toFixed(1) + '%' : '0%';
         } catch(e) {}
     }
 
@@ -878,42 +1004,39 @@
       const pwd = document.getElementById('admin-pwd').value;
       if (pwd === '9431') { userRole = 'admin'; showToast("Admin Access Unlocked"); }
       else if (pwd === '1820') { userRole = 'incharge'; showToast("Site Incharge Mode Unlocked"); }
-      // SUPERVISOR ROLE ADDED
       else if (pwd === '5566') { userRole = 'supervisor'; showToast("Supervisor Mode Unlocked"); }
       else { document.getElementById('pwd-error').style.display = 'block'; return; }
       
       localStorage.setItem('gi_role', userRole); 
       closeLoginModal(); updateAuthUI(); renderAll(); initPresence(); 
       logActivity(`Authorized as ${userRole}`);
-      sendSystemChat(`🔑 ${userName} signed in as ${userRole.toUpperCase()}.`);
     }
     
     function updateAuthUI() {
       const btn = document.getElementById('auth-status-btn'), edits = document.getElementById('edit-controls'), clrGrp = document.getElementById('btn-clear-group');
-      
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+
       if (userRole === 'admin') { 
         btn.innerHTML='🛡️ Admin'; btn.style.background='var(--danger)'; btn.classList.remove("shake-error");
         edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='inline-flex';
         clrGrp.style.display = 'inline-flex';
-      } 
-      else if (userRole === 'incharge') {
+      } else if (userRole === 'incharge') {
         btn.innerHTML='🔑 Incharge'; btn.style.background='var(--warning)'; btn.classList.remove("shake-error");
-        edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='none'; document.getElementById('btn-add-kp').style.display='none';
+        edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='none';
         clrGrp.style.display = 'none';
-      } 
-      else if (userRole === 'supervisor') {
-        // Supervisors CAN add workers, but CANNOT wipe zones
+      } else if (userRole === 'supervisor') {
         btn.innerHTML='👷 Supervisor'; btn.style.background='var(--secondary)'; btn.classList.remove("shake-error");
         edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='none';
         clrGrp.style.display = 'none';
-      }
-      else { 
+      } else { 
         btn.innerHTML='🔒 View Only'; btn.style.background='rgba(255,255,255,0.2)'; edits.style.display='none';
       }
+      renderSiteDropdown(); // Re-render site dropdown so management actions respect role permissions
     }
 
     window.requireAuthClick = function(el) { 
-      if (userRole === 'viewer' || isMasterRollup) { 
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if (!canManage || isMasterRollup) { 
         if(el && el.blur) el.blur(); 
         const btn = document.getElementById('auth-status-btn'); 
         btn.classList.remove("shake-error"); void btn.offsetWidth; btn.classList.add("shake-error"); 
@@ -922,24 +1045,11 @@
       } 
     };
 
-    /* =========================================
-       3. SITE MANAGER & CLOUD SYNC ROLLUP
-       ========================================= */
-    function isUserTyping() {
-      const el = document.activeElement;
-      return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT');
-    }
-
+    function isUserTyping() { const el = document.activeElement; return el && (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA' || el.tagName === 'SELECT'); }
     window.resolveConflict = function(action) {
       document.getElementById('conflict-overlay').style.display = 'none';
-      if(action === 'reload') {
-        appState = sanitizeState(pendingCloudState);
-        renderAll();
-      } else if (action === 'force') {
-        isSavingToCloud = true;
-        db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState)
-          .then(() => { isSavingToCloud = false; showToast("Forced Override Successful"); logActivity("Forced sync overwrite"); });
-      }
+      if(action === 'reload') { appState = sanitizeState(pendingCloudState); renderAll(); } 
+      else if (action === 'force') { isSavingToCloud = true; db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState).then(() => { isSavingToCloud = false; showToast("Forced Override Successful"); logActivity("Forced sync overwrite"); }); }
     };
 
     function loadLocalState() {
@@ -950,36 +1060,28 @@
     
     function syncSiteDataFirebase() {
       if (currentSiteRef) { currentSiteRef.off(); }
-      if (!currentSite || !currentSubgroup) {
-          appState = sanitizeState(null); renderAll(); return; 
-      }
+      if (!currentSite || !currentSubgroup) { appState = sanitizeState(null); renderAll(); return; }
 
-      // 🌍 MASTER ROLL-UP AGGREGATION ENGINE
       if (isMasterRollup) {
         currentSiteRef = db.ref(`data/${currentSite}`);
         currentSiteRef.on('value', (s) => {
           const allGroups = s.val();
           let aggregated = { workers: [], keyPersons: [], attendance: {}, kpAttendance: {}, advances: {}, dpr: {}, timeline: {} };
-          
           if(allGroups) {
             Object.values(allGroups).forEach(group => {
               if(!group) return;
-              
               if(group.workers) aggregated.workers.push(...Object.values(group.workers));
               if(group.keyPersons) aggregated.keyPersons.push(...Object.values(group.keyPersons));
-              
               if(group.attendance) Object.entries(group.attendance).forEach(([month, wData]) => {
                 if(!aggregated.attendance[month]) aggregated.attendance[month] = {};
                 Object.assign(aggregated.attendance[month], wData);
               });
               if(group.kpAttendance) Object.assign(aggregated.kpAttendance, group.kpAttendance);
               if(group.advances) Object.assign(aggregated.advances, group.advances);
-              
               if(group.timeline) Object.entries(group.timeline).forEach(([date, tArray]) => {
                 if(!aggregated.timeline[date]) aggregated.timeline[date] = [];
                 aggregated.timeline[date].push(...Object.values(tArray));
               });
-              
               if(group.dpr) Object.entries(group.dpr).forEach(([date, dData]) => {
                 if(!aggregated.dpr[date]) aggregated.dpr[date] = { work: "", matReceived: [], matConsumed: [] };
                 if(dData.work) aggregated.dpr[date].work += (aggregated.dpr[date].work ? "\n---\n" : "") + dData.work;
@@ -988,17 +1090,9 @@
               });
             });
           }
-          
           const uniqueKpIds = [];
-          aggregated.keyPersons = aggregated.keyPersons.filter(kp => {
-             if(uniqueKpIds.includes(kp.id)) return false;
-             uniqueKpIds.push(kp.id); return true;
-          });
-
-          Object.keys(aggregated.timeline).forEach(date => {
-             aggregated.timeline[date].sort((a,b) => a.timestamp - b.timestamp);
-          });
-
+          aggregated.keyPersons = aggregated.keyPersons.filter(kp => { if(uniqueKpIds.includes(kp.id)) return false; uniqueKpIds.push(kp.id); return true; });
+          Object.keys(aggregated.timeline).forEach(date => { aggregated.timeline[date].sort((a,b) => a.timestamp - b.timestamp); });
           appState = sanitizeState(aggregated);
           if(!isUserTyping()) renderAll();
         });
@@ -1009,18 +1103,10 @@
       currentSiteRef.on('value', (s) => {
         if(isSavingToCloud) return; 
         const newData = s.val();
-        
         if(isUserTyping() && newData) {
-           const currentLocalString = JSON.stringify(appState);
-           const incomingCloudString = JSON.stringify(sanitizeState(newData));
-           if(currentLocalString !== incomingCloudString) {
-               pendingCloudState = newData;
-               document.getElementById('conflict-overlay').style.display = 'flex';
-               return; 
-           }
+           if(JSON.stringify(appState) !== JSON.stringify(sanitizeState(newData))) { pendingCloudState = newData; document.getElementById('conflict-overlay').style.display = 'flex'; return; }
         }
-        appState = sanitizeState(newData);
-        localStorage.setItem(getStorageKey(), JSON.stringify(appState)); 
+        appState = sanitizeState(newData); localStorage.setItem(getStorageKey(), JSON.stringify(appState)); 
         if(!isUserTyping()) { renderAll(); }
       });
     }
@@ -1029,89 +1115,46 @@
       if (!currentSite || !currentSubgroup || isMasterRollup) return; 
       appState = sanitizeState(appState);
       localStorage.setItem(getStorageKey(), JSON.stringify(appState));
-      
       isSavingToCloud = true;
-      db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState)
-        .then(() => { isSavingToCloud = false; });
-        
+      db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState).then(() => { isSavingToCloud = false; });
       totalSyncs++; updateDashboard(); updateAdvancedAnalytics();
     }
-
     function forceSyncProcess() { saveState(); showToast("Force Synced with Cloud"); }
-
     function wipeZoneData() {
-      if(userRole !== 'admin' || isMasterRollup) return;
-      if(confirm("DANGER: Wipe all workers and attendance in this specific group? This cannot be undone.")) {
-        appState = sanitizeState(null);
-        saveState();
-        logActivity(`Wiped all data in ${currentSubgroup}`);
-        showToast("Group Data Cleared");
-      }
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if(!canManage || isMasterRollup) return;
+      if(confirm("DANGER: Wipe all data in this group?")) { appState = sanitizeState(null); saveState(); logActivity(`Wiped all data in ${currentSubgroup}`); showToast("Data Cleared"); }
     }
-</script>
-<script>
-    /* =========================================
-       4. SITE & GROUP MANAGER (HIERARCHY)
-       ========================================= */
+
     function toggleDropdown() { document.getElementById('site-dropdown').classList.toggle('active'); }
-    
-    function loadSitesFromCloud() {
-      db.ref('global/structure').on('value', (snap) => {
-        siteStructure = sanitizeStructure(snap.val());
-        renderSiteDropdown();
-      });
-    }
+    function loadSitesFromCloud() { db.ref('global/structure').on('value', (snap) => { siteStructure = sanitizeStructure(snap.val()); renderSiteDropdown(); }); }
 
     function renderSiteDropdown() {
       const dd = document.getElementById('site-dropdown'); dd.innerHTML = '';
-      
-      if (siteStructure.length === 0) {
-        dd.innerHTML = `<div class="dropdown-zone-item last-zone" style="color:var(--text-muted); font-style:italic;"><span style="margin-left: 20px;">No sites created yet</span></div>`;
-      } else {
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+
+      if (siteStructure.length === 0) { dd.innerHTML = `<div class="dropdown-zone-item last-zone"><span style="margin-left:20px;">No sites created</span></div>`; } 
+      else {
         siteStructure.forEach(site => {
-          const header = document.createElement('div'); 
-          header.className = 'dropdown-site-header';
-          
-          let headerActions = '';
-          if(userRole === 'admin') {
-              headerActions = `<div style="display:flex; gap:6px; align-items:center;">
-                <span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span>
-                <span class="action-btn-sm" title="Rename Site" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span>
-                <span class="action-btn-sm" style="color:var(--danger); border:1px solid #fecaca; background:#fef2f2;" title="Delete Entire Site" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑️</span>
-              </div>`;
-          }
-          
-          header.innerHTML = `<div class="site-title-text" style="cursor:pointer;" onclick="selectSiteSubgroup('${site.id}', 'ALL_GROUPS', '${site.name}', 'Master Roll-Up')">🏢 ${site.name}</div>${headerActions}`;
+          const header = document.createElement('div'); header.className = 'dropdown-site-header';
+          let acts = canManage ? `<div style="display:flex; gap:6px;"><span class="add-zone-btn" onclick="openSiteManager('group', '${site.id}')">➕ Group</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRenameSite('${site.id}')">✏️</span><span class="action-btn-sm" style="color:red;" onclick="event.stopPropagation(); triggerDeleteSite('${site.id}')">🗑️</span></div>` : '';
+          header.innerHTML = `<div class="site-title-text" style="cursor:pointer;" onclick="selectSiteSubgroup('${site.id}', 'ALL_GROUPS', '${site.name}', 'Master Roll-Up')">🏢 ${site.name}</div>${acts}`;
           dd.appendChild(header);
-          
-          if(site.subgroups && site.subgroups.length > 0) {
-            site.subgroups.forEach((sub, index) => {
-              const isLast = (index === site.subgroups.length - 1);
-              const item = document.createElement('div'); 
-              item.className = `dropdown-zone-item ${isLast ? 'last-zone' : ''}`;
-              if(site.id === currentSite && sub.id === currentSubgroup) { item.style.background = 'rgba(45, 104, 196, 0.08)'; item.style.color = 'var(--secondary)'; }
-              
-              let actions = '';
-              if(userRole === 'admin') {
-                actions = `<div style="display:flex; gap:6px;">
-                  <span class="action-btn-sm" title="Rename Group" onclick="event.stopPropagation(); triggerRename('${sub.id}')">✏️</span>
-                  <span class="action-btn-sm" title="Delete Group" onclick="event.stopPropagation(); triggerDelete('${sub.id}')">🗑</span>
-                </div>`;
-              }
-              item.innerHTML = `<span style="flex:1; display:flex; align-items:center; gap:6px;">📍 ${sub.name}</span> ${actions}`;
+          if(site.subgroups) {
+            site.subgroups.forEach((sub, i) => {
+              const item = document.createElement('div'); item.className = `dropdown-zone-item ${i === site.subgroups.length - 1 ? 'last-zone' : ''}`;
+              if(site.id === currentSite && sub.id === currentSubgroup) { item.style.background = 'rgba(45, 104, 196, 0.05)'; item.style.color = 'var(--secondary)'; }
+              let subActs = canManage ? `<div style="display:flex; gap:6px;"><span class="action-btn-sm" onclick="event.stopPropagation(); triggerRename('${sub.id}')">✏️</span><span class="action-btn-sm" onclick="event.stopPropagation(); triggerDelete('${sub.id}')">🗑️</span></div>` : '';
+              item.innerHTML = `<span style="flex:1; display:flex; align-items:center; gap:6px;">📍 ${sub.name}</span> ${subActs}`;
               item.onclick = () => selectSiteSubgroup(site.id, sub.id, site.name, sub.name);
               dd.appendChild(item);
             });
           }
         });
       }
-      
-      if(userRole === 'admin') { 
-        const addS = document.createElement('div'); 
-        addS.style.background = 'var(--primary)'; addS.style.color = 'white'; addS.style.padding = '16px'; addS.style.textAlign = 'center'; addS.style.fontWeight = '900'; addS.style.cursor = 'pointer'; addS.style.textTransform = 'uppercase'; addS.style.letterSpacing = '1px';
-        addS.innerHTML = '➕ Create New Site'; 
-        addS.onclick = () => { document.getElementById('site-dropdown').classList.remove('active'); openSiteManager('site'); }; 
-        dd.appendChild(addS); 
+      if(canManage) { 
+        const addS = document.createElement('div'); addS.className = "add-zone-btn"; addS.style.margin="10px"; addS.style.textAlign="center"; addS.innerHTML = '➕ Create New Site'; 
+        addS.onclick = () => { document.getElementById('site-dropdown').classList.remove('active'); openSiteManager('site'); }; dd.appendChild(addS); 
       }
       
       const aSite = siteStructure.find(x => x.id === currentSite);
@@ -1122,62 +1165,44 @@
     }
 
     function selectSiteSubgroup(sId, subId, sName, subName) {
-      currentSite = sId; currentSubgroup = subId;
-      localStorage.setItem('gi_last_site', sId); localStorage.setItem('gi_last_sub', subId);
-      
+      currentSite = sId; currentSubgroup = subId; localStorage.setItem('gi_last_site', sId); localStorage.setItem('gi_last_sub', subId);
       isMasterRollup = (subId === 'ALL_GROUPS');
       
       if (isMasterRollup) {
          document.getElementById('selected-site-label').textContent = `🏢 ${sName} ➔ 🌍 Master Roll-Up`;
          document.querySelectorAll('[id^="rollup-alert-"]').forEach(el => el.style.display = 'block');
-         document.getElementById('kp-master-header').style.display = 'block';
-         document.getElementById('edit-controls').style.display = 'none'; 
+         document.getElementById('kp-master-header').style.display = 'block'; document.getElementById('edit-controls').style.display = 'none'; 
       } else {
          document.getElementById('selected-site-label').textContent = `🏢 ${sName} ➔ 📍 ${subName}`;
          document.querySelectorAll('[id^="rollup-alert-"]').forEach(el => el.style.display = 'none');
-         document.getElementById('kp-master-header').style.display = 'none';
-         if (userRole !== 'viewer') updateAuthUI(); 
+         document.getElementById('kp-master-header').style.display = 'none'; if (userRole !== 'viewer') updateAuthUI(); 
       }
-
-      document.getElementById('site-dropdown').classList.remove('active');
-      loadLocalState(); syncSiteDataFirebase(); 
+      document.getElementById('site-dropdown').classList.remove('active'); loadLocalState(); syncSiteDataFirebase(); 
     }
 
     let smTempSiteId = null;
     function openSiteManager(type, siteId = null) {
-      if(userRole !== 'admin') return;
-      document.getElementById('site-manager-modal').style.display = 'flex';
-      document.getElementById('sm-action-type').value = type; smTempSiteId = siteId; document.getElementById('sm-input').value = '';
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if(!canManage) return showToast("Permission denied. Supervisors, Incharges & Admins only.");
+      document.getElementById('site-manager-modal').style.display = 'flex'; document.getElementById('sm-action-type').value = type; smTempSiteId = siteId; document.getElementById('sm-input').value = '';
       if(type === 'site') { document.getElementById('sm-title').textContent = "Create New Site"; document.getElementById('sm-desc').textContent = "A Site represents a major geographical project location."; } 
-      else if (type === 'group') { document.getElementById('sm-title').textContent = "Create New Group"; document.getElementById('sm-desc').textContent = "A Group is a specific subgroup within this site."; } 
+      else if (type === 'group') { document.getElementById('sm-title').textContent = "Create New Group"; } 
       else if (type === 'rename') { document.getElementById('sm-title').textContent = "Rename Group"; const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); const sub = site.subgroups.find(s => s.id === contextTargetId); document.getElementById('sm-input').value = sub.name; }
       else if (type === 'rename_site') { document.getElementById('sm-title').textContent = "Rename Site"; const site = siteStructure.find(s => s.id === contextTargetId); document.getElementById('sm-input').value = site.name; }
     }
 
     function executeSiteManager() {
-      const type = document.getElementById('sm-action-type').value; 
-      const val = document.getElementById('sm-input').value.trim();
+      const type = document.getElementById('sm-action-type').value; const val = document.getElementById('sm-input').value.trim();
       if(!val) return alert("Name cannot be empty.");
-
       if(type === 'site') { const id = 'site_' + Date.now(); siteStructure.push({ id, name: val, subgroups: [] }); logActivity(`Created new site: ${val}`); } 
-      else if(type === 'group') { 
-        const site = siteStructure.find(s => s.id === smTempSiteId); if(!site.subgroups) site.subgroups = []; 
-        const newSubId = 'sub_'+Date.now(); site.subgroups.push({ id: newSubId, name: val }); logActivity(`Added group ${val}`); 
-        if (!currentSite || !currentSubgroup) selectSiteSubgroup(site.id, newSubId, site.name, val);
-      } 
-      else if(type === 'rename') { 
-        const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); 
-        const sub = site.subgroups.find(s => s.id === contextTargetId); sub.name = val; logActivity(`Renamed group to ${val}`); 
-        if(currentSubgroup === contextTargetId) document.getElementById('selected-site-label').textContent = `🏢 ${site.name} ➔ 📍 ${val}`;
-      }
+      else if(type === 'group') { const site = siteStructure.find(s => s.id === smTempSiteId); if(!site.subgroups) site.subgroups = []; const newSubId = 'sub_'+Date.now(); site.subgroups.push({ id: newSubId, name: val }); logActivity(`Added group ${val}`); if (!currentSite || !currentSubgroup) selectSiteSubgroup(site.id, newSubId, site.name, val); } 
+      else if(type === 'rename') { const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); const sub = site.subgroups.find(s => s.id === contextTargetId); sub.name = val; logActivity(`Renamed group to ${val}`); if(currentSubgroup === contextTargetId) document.getElementById('selected-site-label').textContent = `🏢 ${site.name} ➔ 📍 ${val}`; }
       else if(type === 'rename_site') { const site = siteStructure.find(s => s.id === contextTargetId); site.name = val; logActivity(`Renamed site to ${val}`); }
-      
       db.ref('global/structure').set(siteStructure); closeModal('site-manager-modal');
     }
 
     function triggerRename(subId) { document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = subId; openSiteManager('rename'); }
     function triggerRenameSite(siteId) { document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = siteId; openSiteManager('rename_site'); }
-    
     function triggerDelete(subId) { 
       document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = subId; 
       if(confirm("Delete this group permanently?")) { 
@@ -1191,35 +1216,26 @@
         }
       } 
     }
-
     function triggerDeleteSite(siteId) {
       document.getElementById('site-dropdown').classList.remove('active'); 
-      if(confirm("DANGER: Are you sure you want to completely delete this ENTIRE SITE and ALL its groups? This cannot be undone.")) { 
+      if(confirm("DANGER: Are you sure you want to completely delete this ENTIRE SITE?")) { 
         siteStructure = siteStructure.filter(s => s.id !== siteId); db.ref('global/structure').set(siteStructure); db.ref(`data/${siteId}`).remove(); logActivity(`Deleted a main site`); 
         if (currentSite === siteId) {
           const fallbackSite = siteStructure.length > 0 ? siteStructure[0] : null;
           if (fallbackSite) {
             const fallbackSub = (fallbackSite.subgroups && fallbackSite.subgroups.length > 0) ? fallbackSite.subgroups[0] : null;
-            if (fallbackSub) selectSiteSubgroup(fallbackSite.id, fallbackSub.id, fallbackSite.name, fallbackSub.name);
+            if (fallbackSub) selectSiteSubgroup(fallbackSite.id, fallbackSub.id, fallbackSite.name, fallbackSite.name);
             else { currentSite = fallbackSite.id; currentSubgroup = 'ALL_GROUPS'; renderSiteDropdown(); syncSiteDataFirebase(); }
           } else { currentSite = null; currentSubgroup = null; document.getElementById('selected-site-label').textContent = '⚠ Database Empty'; renderSiteDropdown(); syncSiteDataFirebase(); }
         } else renderSiteDropdown(); 
       }
     }
 
-    /* =========================================
-       5. TABS & CALENDAR
-       ========================================= */
     function generateMonthOptions() { 
       const select = document.getElementById("month-select"); if(!select) return; select.innerHTML = ""; 
       const m = ["January", "February", "March", "April", "May", "June", "July", "August", "September", "October", "November", "December"]; 
       const cY = new Date().getFullYear(), cM = new Date().getMonth() + 1; 
-      for (let y = 2025; y <= 2030; y++) { 
-        for (let i = 1; i <= 12; i++) { 
-          const opt = document.createElement("option"); opt.value = `${i}-${y}`; opt.textContent = `${m[i-1]} ${y}`; 
-          if (y === cY && i === cM) opt.selected = true; select.appendChild(opt); 
-        } 
-      } 
+      for (let y = 2025; y <= 2030; y++) { for (let i = 1; i <= 12; i++) { const opt = document.createElement("option"); opt.value = `${i}-${y}`; opt.textContent = `${m[i-1]} ${y}`; if (y === cY && i === cM) opt.selected = true; select.appendChild(opt); } } 
     }
 
     function populateDaySelector() { 
@@ -1229,10 +1245,7 @@
       const mKey = getAttendanceMonthKey(); const parts = mKey.split("-");
       const month = parseInt(parts[0], 10); const year = parseInt(parts[1], 10);
       const totalDays = new Date(year, month, 0).getDate();
-
-      for (let i = 1; i <= totalDays; i++) { 
-        const opt = document.createElement("option"); opt.value = i; opt.textContent = `Day ${i}`; select.appendChild(opt); 
-      }
+      for (let i = 1; i <= totalDays; i++) { const opt = document.createElement("option"); opt.value = i; opt.textContent = `Day ${i}`; select.appendChild(opt); }
       select.value = Math.min(parseInt(currentSelectedDay) || 1, totalDays);
     }
 
@@ -1255,12 +1268,8 @@
     
     function renderAll() { renderDailyView(); renderKeyPersonView(); renderDPRView(); renderNotesView(); renderMonthlyTable(); renderWorkerManagement(); populateSlipWorkerSelect(); updateDashboard(); }
 
-    /* =========================================
-       6. ATTENDANCE & SUPERVISOR LOCKS
-       ========================================= */
     function getInitials(name) { const n = (name||"").trim().split(" "); return n.length > 1 ? (n[0][0]+n[1][0]).toUpperCase() : (n[0] ? n[0][0].toUpperCase() : 'U'); }
     function getAttendanceMonthKey() { const monthSelect = document.getElementById("month-select"); return monthSelect ? monthSelect.value : `${new Date().getMonth()+1}-${new Date().getFullYear()}`; }
-
     function getWorkerAttendanceRecord(wId, sDay) {
       const mKey = getAttendanceMonthKey();
       if (!appState.attendance) appState.attendance = {}; if (!appState.attendance[mKey]) appState.attendance[mKey] = {}; if (!appState.attendance[mKey][wId]) appState.attendance[mKey][wId] = {};
@@ -1274,13 +1283,10 @@
       if(appState.workers.length === 0) { c.innerHTML = `<div class="empty-state">No workers registered in this group yet.</div>`; return; }
 
       const filteredWorkers = appState.workers.filter(w => w.name.toLowerCase().includes(query) || (w.desig && w.desig.toLowerCase().includes(query)));
-      if(filteredWorkers.length === 0) { c.innerHTML = `<div class="empty-state">No matching workers found for "${query}".</div>`; return; }
+      if(filteredWorkers.length === 0) { c.innerHTML = `<div class="empty-state">No matching workers found.</div>`; return; }
 
       filteredWorkers.forEach((w, i) => {
         const a = getWorkerAttendanceRecord(w.id, sDay);
-        
-        // Supervisor Strict Lock Logic: If attendance already exists and role is supervisor, LOCK IT. 
-        // Incharge or MasterRollup locks it normally.
         const isSupervisorLocked = (userRole === 'supervisor' && a.duty !== undefined && a.duty > 0);
         const isLocked = isMasterRollup || (userRole === 'incharge' && a.locked) || isSupervisorLocked; 
         
@@ -1299,7 +1305,7 @@
             <div class="worker-card-header"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div style="flex:1;"><div class="worker-name">${w.name}</div><div class="worker-desig">${w.desig}</div></div><div style="font-weight:900; color:var(--secondary);">₹${w.rate}/d</div></div>
             <div class="duty-selector"><div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evPViewer}">P (1)</div><div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evHViewer}">H (0.5)</div><div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evAViewer}">A (0)</div></div>
             <div style="display:flex; gap:12px; margin-top:6px;">
-              <div class="input-box"><span>OT (Hrs)</span><input type="number" value="${a.ot||0}" ${r} onblur="setDailyOT('${w.id}', ${sDay}, this.value)"></div>
+              <div class="input-box"><span>OT (Hrs)</span><input type="number" step="0.5" value="${a.ot||0}" ${r} onblur="setDailyOT('${w.id}', ${sDay}, this.value)"></div>
               <div class="input-box"><span>Adv (₹)</span><input type="number" step="50" value="${a.adv||''}" ${r} onblur="setDailyAdv('${w.id}', ${sDay}, this.value)"></div>
             </div>
           </div>`;
@@ -1310,9 +1316,8 @@
       const sDay = parseInt(document.getElementById("day-select").value);
       const c = document.getElementById("kp-list-container"); c.innerHTML = ""; const alertBox = document.getElementById("kp-alert");
       if(!isMasterRollup) { alertBox.style.display = 'block'; return; }
-      
       alertBox.style.display = 'none';
-      if(appState.keyPersons.length === 0) { c.innerHTML = `<div class="empty-state" style="border-color:#FCD34D;">No key personnel registered yet.</div>`; return; }
+      if(appState.keyPersons.length === 0) { c.innerHTML = `<div class="empty-state">No key personnel registered yet.</div>`; return; }
 
       appState.keyPersons.forEach((w, i) => {
         const a = (appState.kpAttendance[w.id] && appState.kpAttendance[w.id][sDay]) || { duty: 0, locked: false };
@@ -1322,52 +1327,41 @@
         const evH = isLocked ? `requireAuthClick(this)` : `setDailyDuty('${w.id}', ${sDay}, 0.5, 'kp')`;
         const evA = isLocked ? `requireAuthClick(this)` : `setDailyDuty('${w.id}', ${sDay}, 0, 'kp')`;
 
+        const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+        const act = canManage ? `<div style="display:flex; gap:10px; margin-top:10px;"><button class="btn btn-outline btn-small" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'kp')">✏️ Edit</button><button class="btn btn-danger btn-small" style="flex:1;" onclick="deleteWorker('${w.id}', 'kp')">🗑️</button></div>` : '';
+
         c.innerHTML += `
           <div class="worker-card kp-card" style="animation-delay: ${i*0.05}s; position:relative;">
-            <div style="position:absolute; top:-10px; right: 10px; font-size:24px; filter: drop-shadow(0 2px 4px rgba(0,0,0,0.2));">⭐</div>
+            <div style="position:absolute; top:-10px; right: 10px; font-size:24px;">⭐</div>
             <div class="worker-card-header"><div class="avatar" style="background: linear-gradient(135deg, #D97706, #F59E0B)">${getInitials(w.name)}</div><div style="flex:1;"><div class="worker-name">${w.name}</div><div class="worker-desig" style="color:#B45309; font-weight:800;">${w.desig}</div></div></div>
             <div class="duty-selector"><div class="duty-opt ${a.duty===1?'selected-p':''} ${lockUI}" onclick="${evP}">Present</div><div class="duty-opt ${a.duty===0.5?'selected-h':''} ${lockUI}" onclick="${evH}">Half</div><div class="duty-opt ${a.duty===0?'selected-a':''} ${lockUI}" onclick="${evA}">Absent</div></div>
+            ${act}
           </div>`;
       });
     }
 
     window.setDailyDuty = function(wId, d, v, type) { 
       if(userRole === 'viewer' || (isMasterRollup && type !== 'kp')) return; 
-      const isKp = (type === 'kp');
-      if (isKp) {
+      if (type === 'kp') {
         if(!appState.kpAttendance[wId]) appState.kpAttendance[wId] = {};
-        appState.kpAttendance[wId][d] = { duty: v, locked: userRole === 'incharge' };
+        appState.kpAttendance[wId][d] = { duty: v, locked: (userRole === 'incharge' || userRole === 'supervisor') };
       } else {
         const mKey = getAttendanceMonthKey();
         if(!appState.attendance[mKey]) appState.attendance[mKey] = {};
         if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId] = {};
         appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{ot:0,adv:0}), duty: v, locked: (userRole === 'incharge' || userRole === 'supervisor') };
       }
-      saveState(); if(isKp) renderKeyPersonView(); else { renderDailyView(); renderMonthlyTable(); }
+      saveState(); if(type==='kp') renderKeyPersonView(); else { renderDailyView(); renderMonthlyTable(); }
     };
     
-    window.setDailyOT = function(wId, d, v) { 
-      if(userRole === 'viewer' || isMasterRollup) return; 
-      const mKey = getAttendanceMonthKey();
-      if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; 
-      appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,adv:0,locked:false}), ot: parseFloat(v)||0 }; 
-      saveState(); 
-    };
-
-    window.setDailyAdv = function(wId, d, v) { 
-      if(userRole === 'viewer' || isMasterRollup) return; 
-      const mKey = getAttendanceMonthKey();
-      if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; 
-      appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,ot:0,locked:false}), adv: parseFloat(v)||0 }; 
-      saveState(); 
-    };
+    window.setDailyOT = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,adv:0,locked:false}), ot: parseFloat(v)||0 }; saveState(); };
+    window.setDailyAdv = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:0,ot:0,locked:false}), adv: parseFloat(v)||0 }; saveState(); };
 
     function markAllWorkersPresent() {
       if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; }
       const sDay = parseInt(document.getElementById("day-select").value);
       const mKey = getAttendanceMonthKey();
       if(!appState.attendance[mKey]) appState.attendance[mKey] = {};
-
       appState.workers.forEach(w => {
         if(!appState.attendance[mKey][w.id]) appState.attendance[mKey][w.id] = {};
         const existing = appState.attendance[mKey][w.id][sDay] || {};
@@ -1376,15 +1370,8 @@
       });
       saveState(); renderDailyView(); renderMonthlyTable(); showToast("Marked all workers present!");
     }
-</script>
-<script>
-    /* =========================================
-       7. DPR, COMPREHENSIVE SI UNITS & WHATSAPP
-       ========================================= */
-    function checkWeatherCondition() {
-      const w = document.getElementById("dpr-weather-select").value; const rainBox = document.getElementById("rain-settings");
-      rainBox.style.display = w.includes('Rain') ? "flex" : "none"; autoSaveDPR();
-    }
+
+    function checkWeatherCondition() { const w = document.getElementById("dpr-weather-select").value; document.getElementById("rain-settings").style.display = w.includes('Rain') ? "flex" : "none"; autoSaveDPR(); }
 
     function renderDPRView() {
       const dk = getSelectedDateKey(); 
@@ -1400,83 +1387,31 @@
       calculateLiveStock();
     }
 
-    // SI Units Expanded Dropdown Generation
     function getUnitOptions(selectedUnit) {
-      const units = [
-        {group: "Weight", opts: ["Kg", "MT (Metric Tonne)", "g", "Quintal"]},
-        {group: "Volume", opts: ["cum (m³)", "cft", "Liter (L)", "Gallon"]},
-        {group: "Area", opts: ["sqm (m²)", "sqft"]},
-        {group: "Length", opts: ["m", "cm", "mm", "ft", "in"]},
-        {group: "Units", opts: ["Bag", "Nos", "Pcs", "Bundle", "Roll", "Box", "Length"]}
-      ];
-      
-      let optionsHtml = '';
-      units.forEach(g => {
-        optionsHtml += `<optgroup label="${g.group}">`;
-        g.opts.forEach(o => {
-          optionsHtml += `<option value="${o}" ${selectedUnit === o ? 'selected' : ''}>${o}</option>`;
-        });
-        optionsHtml += `</optgroup>`;
-      });
-      return optionsHtml;
+      const units = [{group: "Weight", opts: ["Kg", "MT (Metric Tonne)", "g", "Quintal"]}, {group: "Volume", opts: ["cum (m³)", "cft", "Liter (L)", "Gallon"]}, {group: "Area", opts: ["sqm (m²)", "sqft"]}, {group: "Length", opts: ["m", "cm", "mm", "ft", "in"]}, {group: "Units", opts: ["Bag", "Nos", "Pcs", "Bundle", "Roll", "Box", "Length"]}];
+      let html = ''; units.forEach(g => { html += `<optgroup label="${g.group}">`; g.opts.forEach(o => { html += `<option value="${o}" ${selectedUnit === o ? 'selected' : ''}>${o}</option>`; }); html += `</optgroup>`; });
+      return html;
     }
 
     function addMaterialRowToDOM(item="", qty="", unit="Bag", type="received") {
-      const c = document.getElementById(`dpr-mat-${type}-list`); 
-      const d = document.createElement("div"); 
-      d.className = "material-row";
-      
-      const r = (userRole === 'viewer' || isMasterRollup) ? "readonly onclick='requireAuthClick(this)'" : ""; 
-      const ds = (userRole === 'viewer' || isMasterRollup) ? "disabled" : "";
-      
-      d.innerHTML = `
-        <input type="text" class="material-item" placeholder="Material Name" value="${item}" ${r} onblur="autoSaveDPR()" style="flex:2">
-        <input type="number" class="material-qty" placeholder="Qty" value="${qty}" ${r} onblur="autoSaveDPR()" style="flex:1">
-        <select class="material-unit" ${ds} onchange="autoSaveDPR()" style="flex:1.5">
-          ${getUnitOptions(unit)}
-        </select>
-        <button class="btn-remove-row" onclick="removeMaterialRow(this)" ${ds} style="padding:10px 14px; border-radius:8px;">✖</button>
-      `;
+      const c = document.getElementById(`dpr-mat-${type}-list`); const d = document.createElement("div"); d.className = "material-row";
+      const r = (userRole === 'viewer' || isMasterRollup) ? "readonly onclick='requireAuthClick(this)'" : ""; const ds = (userRole === 'viewer' || isMasterRollup) ? "disabled" : "";
+      d.innerHTML = `<input type="text" class="material-item" placeholder="Material Name" value="${item}" ${r} onblur="autoSaveDPR()" style="flex:2"><input type="number" class="material-qty" placeholder="Qty" value="${qty}" ${r} onblur="autoSaveDPR()" style="flex:1"><select class="material-unit" ${ds} onchange="autoSaveDPR()" style="flex:1.5">${getUnitOptions(unit)}</select><button class="btn-remove-row" onclick="removeMaterialRow(this)" ${ds} style="padding:10px 14px; border-radius:8px;">✖</button>`;
       c.appendChild(d);
     }
-    
-    window.addMaterialRow = function(type) { 
-      if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; } 
-      addMaterialRowToDOM("", "", "Kg", type); 
-    };
-    
-    window.removeMaterialRow = function(btn) { 
-      if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; } 
-      btn.parentElement.remove(); 
-      autoSaveDPR(); 
-    };
+    window.addMaterialRow = function(type) { if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; } addMaterialRowToDOM("", "", "Kg", type); };
+    window.removeMaterialRow = function(btn) { if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; } btn.parentElement.remove(); autoSaveDPR(); };
 
     function calculateLiveStock() {
       const stockMap = {};
       Object.values(appState.dpr).forEach(d => {
-        if(d.matReceived) {
-          d.matReceived.forEach(m => {
-            const name = (m.item||"").trim().toLowerCase();
-            if(name) { stockMap[name] = (stockMap[name] || 0) + (parseFloat(m.qty)||0); }
-          });
-        }
-        if(d.matConsumed) {
-          d.matConsumed.forEach(m => {
-            const name = (m.item||"").trim().toLowerCase();
-            if(name) { stockMap[name] = (stockMap[name] || 0) - (parseFloat(m.qty)||0); }
-          });
-        }
+        if(d.matReceived) d.matReceived.forEach(m => { const n = (m.item||"").trim().toLowerCase(); if(n) stockMap[n] = (stockMap[n]||0) + (parseFloat(m.qty)||0); });
+        if(d.matConsumed) d.matConsumed.forEach(m => { const n = (m.item||"").trim().toLowerCase(); if(n) stockMap[n] = (stockMap[n]||0) - (parseFloat(m.qty)||0); });
       });
-      const stockContainer = document.getElementById("live-stock-summary");
-      stockContainer.innerHTML = "";
+      const stockContainer = document.getElementById("live-stock-summary"); stockContainer.innerHTML = "";
       const keys = Object.keys(stockMap);
-      if(keys.length === 0) {
-        stockContainer.innerHTML = `<span style="color:var(--text-muted); font-size:13px; font-style:italic;">No material movement logged yet.</span>`;
-        return;
-      }
-      keys.forEach(k => {
-        stockContainer.innerHTML += `<div class="stock-badge">📦 ${k.toUpperCase()}: ${stockMap[k]}</div>`;
-      });
+      if(keys.length === 0) { stockContainer.innerHTML = `<span style="color:var(--text-muted); font-size:13px; font-style:italic;">No material movement logged yet.</span>`; return; }
+      keys.forEach(k => { stockContainer.innerHTML += `<div class="stock-badge">📦 ${k.toUpperCase()}: ${stockMap[k]}</div>`; });
     }
 
     function autoSaveDPR() {
@@ -1491,152 +1426,192 @@
       }, 500);
     }
 
-    // Comprehensive WhatsApp Export
     function shareDPRWhatsApp() {
         const dk = getSelectedDateKey(); const d = appState.dpr[dk];
         if(!d) { showToast("No DPR data for today."); return; }
-        
-        let tPresent = 0, tAbsent = 0;
-        const sDay = parseInt(document.getElementById("day-select").value) || 1;
-        
+        let tPresent = 0, tAbsent = 0; const sDay = parseInt(document.getElementById("day-select").value) || 1;
         const tradeCounts = {};
-        appState.workers.forEach(w => {
-           const rec = getWorkerAttendanceRecord(w.id, sDay);
-           if(rec.duty > 0) {
-              tPresent++;
-              tradeCounts[w.desig] = (tradeCounts[w.desig] || 0) + 1;
-           } else {
-              tAbsent++;
-           }
-        });
-        
-        let text = `*🚧 GLOBAL INDUSTRIES - SITE REPORT*\n*Date:* ${dk}\n*Weather:* ${d.weather}\n\n`;
-        
-        text += `*👥 WORKFORCE SUMMARY*\n`;
-        text += `Total Registered: ${appState.workers.length}\nPresent: ${tPresent}\nAbsent: ${tAbsent}\n`;
-        if(Object.keys(tradeCounts).length > 0) {
-           text += `\n*Trade Breakdown (Present):*\n`;
-           Object.keys(tradeCounts).forEach(trade => text += `- ${trade}: ${tradeCounts[trade]}\n`);
-        }
-        
+        appState.workers.forEach(w => { const rec = getWorkerAttendanceRecord(w.id, sDay); if(rec.duty > 0) { tPresent++; tradeCounts[w.desig] = (tradeCounts[w.desig] || 0) + 1; } else { tAbsent++; } });
+        let text = `*🚧 GLOBAL INDUSTRIES - SITE REPORT*\n*Date:* ${dk}\n*Weather:* ${d.weather}\n\n*👥 WORKFORCE SUMMARY*\nTotal Registered: ${appState.workers.length}\nPresent: ${tPresent}\nAbsent: ${tAbsent}\n`;
+        if(Object.keys(tradeCounts).length > 0) { text += `\n*Trade Breakdown:*\n`; Object.keys(tradeCounts).forEach(trade => text += `- ${trade}: ${tradeCounts[trade]}\n`); }
         text += `\n*📝 WORK DETAILS*\n${d.work || "No work details provided"}\n\n`;
-        
-        if (d.rainStart || d.rainEnd || d.weather.includes('Rain')) {
-            text += `*🌧 Rain Window:* ${d.rainStart || "N/A"} to ${d.rainEnd || "N/A"}\n`;
-            text += `*🛑 Work Stopped:* ${d.workStop}\n\n`;
-        }
-        
+        if (d.rainStart || d.rainEnd || d.weather.includes('Rain')) { text += `*🌧️ Rain Window:* ${d.rainStart || "N/A"} to ${d.rainEnd || "N/A"}\n*🛑 Work Stopped:* ${d.workStop}\n\n`; }
         text += `*📥 MATERIALS RECEIVED:*\n`;
-        if(!d.matReceived || d.matReceived.length === 0) text += `- None\n`;
-        else d.matReceived.forEach(m => text += `- ${m.item}: ${m.qty} ${m.unit}\n`);
-        
+        if(!d.matReceived || d.matReceived.length === 0) text += `- None\n`; else d.matReceived.forEach(m => text += `- ${m.item}: ${m.qty} ${m.unit}\n`);
         text += `\n*📤 MATERIALS CONSUMED:*\n`;
-        if(!d.matConsumed || d.matConsumed.length === 0) text += `- None\n`;
-        else d.matConsumed.forEach(m => text += `- ${m.item}: ${m.qty} ${m.unit}\n`);
-        
+        if(!d.matConsumed || d.matConsumed.length === 0) text += `- None\n`; else d.matConsumed.forEach(m => text += `- ${m.item}: ${m.qty} ${m.unit}\n`);
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     }
 
-    /* =========================================
-       8. TIMELINE NOTES
-       ========================================= */
     function addTimelineNote() {
       if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; }
-      const input = document.getElementById("timeline-input-text");
-      const text = input.value.trim();
+      const input = document.getElementById("timeline-input-text"); const text = input.value.trim();
       if(!text) return;
-
       const dk = getSelectedDateKey();
-      if(!appState.timeline) appState.timeline = {};
-      if(!appState.timeline[dk]) appState.timeline[dk] = [];
-      
-      appState.timeline[dk].push({
-         id: 'note_' + Date.now(),
-         text: text,
-         author: userName,
-         role: userRole,
-         timestamp: Date.now()
-      });
-      
-      input.value = '';
-      saveState();
-      renderNotesView();
+      if(!appState.timeline) appState.timeline = {}; if(!appState.timeline[dk]) appState.timeline[dk] = [];
+      appState.timeline[dk].push({ id: 'note_' + Date.now(), text: text, author: userName, role: userRole, timestamp: Date.now() });
+      input.value = ''; saveState(); renderNotesView();
     }
 
     function renderNotesView() {
-      const dk = getSelectedDateKey();
-      const feed = document.getElementById("timeline-feed");
-      feed.innerHTML = "";
-      
+      const dk = getSelectedDateKey(); const feed = document.getElementById("timeline-feed"); feed.innerHTML = "";
       const notes = (appState.timeline && appState.timeline[dk]) ? appState.timeline[dk] : [];
-      
-      if(notes.length === 0) {
-        feed.innerHTML = `<div class="empty-state">No notes added to the timeline today.</div>`;
-        return;
-      }
-
+      if(notes.length === 0) { feed.innerHTML = `<div class="empty-state">No notes added to the timeline today.</div>`; return; }
       notes.forEach(note => {
         const time = new Date(note.timestamp).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
-        feed.innerHTML += `
-          <div style="background: var(--card-bg); padding: 12px 16px; border-radius: 12px; border-left: 4px solid var(--secondary); box-shadow: 0 2px 5px rgba(0,0,0,0.02);">
-            <div style="display:flex; justify-content:space-between; margin-bottom: 6px;">
-               <span style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase;">${note.author} (${note.role})</span>
-               <span style="font-size:11px; color:var(--text-muted);">${time}</span>
-            </div>
-            <div style="font-size:14px; color:var(--text); line-height: 1.4;">${note.text}</div>
-          </div>
-        `;
+        feed.innerHTML += `<div style="background: var(--card-bg); padding: 12px 16px; border-radius: 12px; border-left: 4px solid var(--secondary); box-shadow: 0 2px 5px rgba(0,0,0,0.02);"><div style="display:flex; justify-content:space-between; margin-bottom: 6px;"><span style="font-size:11px; font-weight:800; color:var(--primary); text-transform:uppercase;">${note.author} (${note.role})</span><span style="font-size:11px; color:var(--text-muted);">${time}</span></div><div style="font-size:14px; color:var(--text); line-height: 1.4;">${note.text}</div></div>`;
       });
     }
 
-    /* =========================================
-       9. CHAT SYSTEM
-       ========================================= */
-    function initChatSync() {
-      db.ref('global/chat').limitToLast(50).on('value', (snap) => {
-        const chatList = document.getElementById('chat-messages-list');
-        if(!chatList) return;
-        chatList.innerHTML = '';
-        if(snap.val()) {
-          Object.values(snap.val()).forEach(msg => {
-            if(msg.isSystem) {
-               chatList.innerHTML += `<div class="chat-system">${msg.text}</div>`;
-               return;
-            }
-            
-            const isOutgoing = (msg.sender === userName);
-            chatList.innerHTML += `
-              <div class="chat-bubble ${isOutgoing ? 'outgoing' : 'incoming'}">
-                <span class="chat-sender">${msg.sender} (${msg.role})</span>
-                <div>${msg.text}</div>
-                <div style="font-size:9px; opacity:0.7; text-align:right; margin-top:2px;">
-                  ${new Date(msg.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'})}
-                  <span style="margin-left: 4px; font-weight: bold; color: #60A5FA;">✓✓</span>
+    let lastReportData = null;
+    function generateCustomReport() {
+        if (!currentSite) return alert("Select a site first.");
+        const startDateStr = document.getElementById('report-start-date').value;
+        const endDateStr = document.getElementById('report-end-date').value;
+        const startDate = new Date(startDateStr);
+        const endDate = new Date(endDateStr);
+        
+        if (isNaN(startDate) || isNaN(endDate)) return alert("Please select valid From and To dates.");
+        if (startDate > endDate) return alert("From Date must be before To Date.");
+
+        const resDiv = document.getElementById('report-results');
+        resDiv.innerHTML = `<div style="text-align:center; padding: 20px;">Fetching global site data and itemizing presence table...</div>`;
+        resDiv.style.display = 'block';
+
+        db.ref(`data/${currentSite}`).once('value').then(snap => {
+            const allGroups = snap.val();
+            if (!allGroups) { resDiv.innerHTML = `<div class="empty-state">No data found for this site.</div>`; return; }
+
+            let tPresent = 0, tAbsent = 0, tOT = 0, tGross = 0, tAdv = 0;
+            let materials = {};
+            let itemizedPresence = {};
+
+            Object.values(allGroups).forEach(group => {
+                if (!group) return;
+                
+                if (group.attendance && group.workers) {
+                    const workersObj = Array.isArray(group.workers) ? group.workers : Object.values(group.workers);
+                    Object.entries(group.attendance).forEach(([monthKey, wData]) => {
+                        const [m, y] = monthKey.split('-');
+                        Object.entries(wData).forEach(([wId, days]) => {
+                            const worker = workersObj.find(w => String(w.id) === String(wId));
+                            if(!worker) return;
+                            const rate = parseFloat(worker.rate) || 0;
+                            
+                            if(!itemizedPresence[wId]) {
+                                itemizedPresence[wId] = { name: worker.name, desig: worker.desig, rate: rate, daysPresent: 0, totalOT: 0, netEarned: 0 };
+                            }
+
+                            Object.entries(days).forEach(([day, r]) => {
+                                const recordDate = new Date(y, m - 1, day);
+                                if (recordDate >= startDate && recordDate <= endDate) {
+                                    const duty = parseFloat(r.duty) || 0;
+                                    const ot = parseFloat(r.ot) || 0;
+                                    const adv = parseFloat(r.adv) || 0;
+                                    
+                                    if (duty > 0) {
+                                        tPresent += duty;
+                                        itemizedPresence[wId].daysPresent += duty;
+                                    } else {
+                                        tAbsent += 1;
+                                    }
+                                    tOT += ot; tAdv += adv;
+                                    const dayEarn = (duty * rate) + (ot * (rate / 8));
+                                    tGross += dayEarn;
+                                    itemizedPresence[wId].totalOT += ot;
+                                    itemizedPresence[wId].netEarned += dayEarn;
+                                }
+                            });
+                        });
+                    });
+                }
+                
+                if (group.dpr) {
+                    Object.entries(group.dpr).forEach(([dateStr, dData]) => {
+                        const [d, m, y] = dateStr.split('-');
+                        const recordDate = new Date(y, m - 1, d);
+                        if (recordDate >= startDate && recordDate <= endDate) {
+                            if (dData.matReceived) { Object.values(dData.matReceived).forEach(mat => { const key = `[IN] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
+                            if (dData.matConsumed) { Object.values(dData.matConsumed).forEach(mat => { const key = `[OUT] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
+                        }
+                    });
+                }
+            });
+
+            lastReportData = { startDate: startDateStr, endDate: endDateStr, tPresent, tAbsent, tOT, tGross, tAdv, materials, itemizedPresence };
+
+            let matHtml = "";
+            Object.keys(materials).forEach(k => {
+                const color = k.includes('[IN]') ? 'var(--success)' : 'var(--danger)';
+                matHtml += `<div style="display:flex; justify-content:space-between; padding: 10px; border-bottom: 1px solid var(--border);"><span style="font-weight: 700; color: ${color};">${k}</span><span style="font-weight: 900; font-size:16px;">${materials[k]}</span></div>`;
+            });
+            if (!matHtml) matHtml = `<div style="padding:10px; color:var(--text-muted); font-size: 13px;">No materials logged in this timeframe.</div>`;
+
+            let tableRows = "";
+            Object.values(itemizedPresence).forEach(wp => {
+                if(wp.daysPresent > 0 || wp.totalOT > 0) {
+                    tableRows += `<tr><td style="text-align:left; font-weight:bold;">${wp.name}</td><td style="text-align:left;">${wp.desig}</td><td>${wp.daysPresent.toFixed(1)}</td><td>${wp.totalOT.toFixed(1)}h</td><td>₹${wp.netEarned.toFixed(0)}</td></tr>`;
+                }
+            });
+            if(!tableRows) tableRows = `<tr><td colspan="5" style="text-align:center; color:var(--text-muted);">No attendance recorded in this date range.</td></tr>`;
+
+            resDiv.innerHTML = `
+                <div style="background: var(--card-bg); border: 2px solid var(--border); border-radius: 12px; padding: 20px;" id="custom-report-container">
+                    <h4 style="color:var(--primary); margin-bottom: 16px; border-bottom: 2px solid var(--secondary); padding-bottom: 8px;">Master Report: ${startDate.toLocaleDateString()} to ${endDate.toLocaleDateString()}</h4>
+                    <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 16px; margin-bottom: 20px;">
+                        <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">TOTAL PRESENT DAYS</div><div style="font-size:20px; font-weight:900; color:var(--success);">${tPresent.toFixed(1)}</div></div>
+                        <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">TOTAL ABSENT DAYS</div><div style="font-size:20px; font-weight:900; color:var(--danger);">${tAbsent}</div></div>
+                        <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">TOTAL OVERTIME</div><div style="font-size:20px; font-weight:900; color:var(--warning);">${tOT.toFixed(1)} hrs</div></div>
+                        <div style="background: var(--bg); padding: 12px; border-radius: 8px;"><div style="font-size:11px; color:var(--text-muted); font-weight:800;">NET WAGES GENERATED</div><div style="font-size:20px; font-weight:900; color:var(--primary);">₹${(tGross - tAdv).toFixed(0)}</div></div>
+                    </div>
+                    
+                    <h5 style="color:var(--primary); font-size:15px; margin-bottom: 10px;">Itemized Workforce Presence & Earnings</h5>
+                    <div class="table-container" style="margin-bottom: 20px; max-height: 250px; overflow-y:auto;">
+                        <table>
+                            <thead><tr><th style="text-align:left;">Name</th><th style="text-align:left;">Trade</th><th>Present Days</th><th>Overtime</th><th>Net Earned</th></tr></thead>
+                            <tbody>${tableRows}</tbody>
+                        </table>
+                    </div>
+
+                    <h5 style="color:var(--primary); font-size:15px; margin-bottom: 10px;">Material Movement Summary</h5>
+                    <div style="background: var(--bg); border-radius: 8px; border: 1px solid var(--border); padding: 8px;">${matHtml}</div>
                 </div>
-              </div>`;
-          });
-          chatList.scrollTop = chatList.scrollHeight;
-        }
-      });
+            `;
+            document.getElementById('btn-rep-excel').style.display = 'inline-flex';
+            document.getElementById('btn-rep-pdf').style.display = 'inline-flex';
+            document.getElementById('btn-rep-wa').style.display = 'inline-flex';
+        }).catch(err => { resDiv.innerHTML = `<div class="empty-state">Error generating report.</div>`; });
     }
 
-    function sendChatMessage() {
-      const input = document.getElementById('chat-input-text');
-      const text = input.value.trim();
-      if(!text) return;
-      db.ref('global/chat').push({ sender: userName || 'User', role: userRole, text: text, time: Date.now(), isSystem: false });
-      input.value = '';
-    }
-    
-    function sendSystemChat(msgText) {
-      db.ref('global/chat').push({ text: msgText, time: Date.now(), isSystem: true });
+    function exportCustomReportExcel() {
+        if(!lastReportData) return showToast("Generate a report first.");
+        const ws_data = [["Global Industries - Custom Date Range Report"], [`From: ${lastReportData.startDate} To: ${lastReportData.endDate}`], [], ["Worker Name", "Trade", "Present Days", "Total Overtime", "Net Earned"]];
+        Object.values(lastReportData.itemizedPresence).forEach(wp => {
+            if(wp.daysPresent > 0 || wp.totalOT > 0) ws_data.push([wp.name, wp.desig, wp.daysPresent, wp.totalOT, wp.netEarned]);
+        });
+        const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
+        XLSX.utils.book_append_sheet(wb, ws, "Custom Report"); XLSX.writeFile(wb, `GI_Custom_Report_${lastReportData.startDate}_to_${lastReportData.endDate}.xlsx`); showToast("Excel exported!");
     }
 
-    /* =========================================
-       10. WORKER REGISTRATION & MANAGEMENT
-       ========================================= */
+    function exportCustomReportPDF() {
+        const el = document.getElementById('custom-report-container');
+        if(!el) return showToast("Generate a report first.");
+        const opt = { margin: 10, filename: 'Custom_Master_Report.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+        html2pdf().from(el).set(opt).save(); showToast("PDF exported!");
+    }
+
+    function exportCustomReportWhatsApp() {
+        if(!lastReportData) return showToast("Generate a report first.");
+        let text = `*📈 GLOBAL INDUSTRIES - MASTER REPORT*\n*Period:* ${lastReportData.startDate} to ${lastReportData.endDate}\n\n*Summary:*`;
+        text += `\n- Present Days: ${lastReportData.tPresent.toFixed(1)}`;
+        text += `\n- Overtime: ${lastReportData.tOT.toFixed(1)} hrs`;
+        text += `\n- Net Pay: ₹${(lastReportData.tGross - lastReportData.tAdv).toFixed(0)}`;
+        window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
+    }
+
     function openAddWorkerModal(type) { 
-      if(userRole === 'viewer' || isMasterRollup) { showToast("Admins/Supervisors only."); return; }
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if(!canManage || isMasterRollup) { showToast("Permission denied. Supervisors, Incharges & Admins only."); return; }
       document.getElementById("edit-worker-type").value = type;
       document.getElementById("modal-worker-title").textContent = type === 'key_person' ? "Register Key Personnel" : "Register Worker"; 
       document.getElementById("wage-input-row").style.display = type === 'key_person' ? 'none' : 'flex'; 
@@ -1658,23 +1633,12 @@
     function saveWorker() {
       const type = document.getElementById("edit-worker-type").value;
       const id=document.getElementById("edit-worker-id").value, n=document.getElementById("w-name").value.trim(), p=document.getElementById("w-phone").value.trim(), d=document.getElementById("w-desig").value, r=parseFloat(document.getElementById("w-rate").value)||0, a=parseFloat(document.getElementById("w-adv").value)||0;
-      if (!n) { alert("Please enter full name"); return; }
-      
-      // Strict Validation to block Zero or Negative wages
-      if (type !== 'kp' && type !== 'key_person' && r <= 0) {
-        alert("Wage rate must be greater than zero. Please enter a valid daily rate.");
-        return;
-      }
+      if (!n) return alert("Please enter full name"); 
+      if (type !== 'kp' && type !== 'key_person' && r <= 0) return alert("Wage rate must be greater than zero.");
       
       const arr = (type === 'key_person' || type === 'kp') ? appState.keyPersons : appState.workers;
-      if (id) { 
-        const w = arr.find(i => String(i.id) === String(id)); 
-        if(w){ w.name=n; w.phone=p; w.desig=d; if(type!=='kp'&&type!=='key_person'){ w.rate=r; appState.advances[w.id]=a; } } 
-      } else { 
-        const nId='id_'+Date.now(); 
-        if(type === 'key_person') arr.push({ id:nId, name:n, phone:p, desig:d });
-        else { arr.push({ id:nId, name:n, phone:p, desig:d, rate:r }); appState.advances[nId]=a; }
-      }
+      if (id) { const w = arr.find(i => String(i.id) === String(id)); if(w){ w.name=n; w.phone=p; w.desig=d; if(type!=='kp'&&type!=='key_person'){ w.rate=r; appState.advances[w.id]=a; } } } 
+      else { const nId='id_'+Date.now(); if(type === 'key_person' || type === 'kp') arr.push({ id:nId, name:n, phone:p, desig:d }); else { arr.push({ id:nId, name:n, phone:p, desig:d, rate:r }); appState.advances[nId]=a; } }
       saveState(); closeModal('worker-modal'); renderAll(); showToast("Profile saved");
     }
 
@@ -1688,22 +1652,16 @@
 
     function renderWorkerManagement() {
       const c = document.getElementById("worker-mgmt-body"); c.innerHTML = "";
-      appState.workers.forEach((w,i) => {
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      appState.workers.forEach((w) => {
         let tA = appState.advances[w.id] || 0; 
-        const mKey = getAttendanceMonthKey();
-        const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
-        for (let d=1; d<=currentMonthDays; d++) {
-          const monthAtt = appState.attendance[mKey] || {};
-          tA += (monthAtt[w.id] && monthAtt[w.id][d] && monthAtt[w.id][d].adv) || 0;
-        }
-        const act = ((userRole === 'admin' || userRole === 'supervisor') && !isMasterRollup) ? `<div style="display:flex; gap:10px;"><button class="btn btn-outline" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'worker')">✏️ Edit</button><button class="btn btn-danger" style="flex:1;" onclick="deleteWorker('${w.id}', 'worker')">🗑️</button></div>` : '';
+        const mKey = getAttendanceMonthKey(); const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
+        for (let d=1; d<=currentMonthDays; d++) { const monthAtt = appState.attendance[mKey] || {}; tA += (monthAtt[w.id] && monthAtt[w.id][d] && monthAtt[w.id][d].adv) || 0; }
+        const act = (canManage && !isMasterRollup) ? `<div style="display:flex; gap:10px;"><button class="btn btn-outline" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'worker')">✏️ Edit</button><button class="btn btn-danger" style="flex:1;" onclick="deleteWorker('${w.id}', 'worker')">🗑️</button></div>` : '';
         c.innerHTML += `<div class="worker-card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div><div style="font-size:16px;font-weight:800;">${w.name}</div><div style="font-size:13px;color:var(--text-muted);">${w.desig}</div></div></div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;"><span>Rate: <b>₹${w.rate}</b></span><span>Adv: <b style="color:var(--danger);">₹${tA}</b></span></div>${act}</div>`;
       });
     }
 
-    /* =========================================
-       11. MONTHLY TABLES & EXPORTS
-       ========================================= */
     function renderMonthlyTable() {
       const h1 = document.querySelector("#monthly-table thead tr:first-child"), h2 = document.getElementById("sub-headers-row"), tb = document.getElementById("monthly-table-body"), tf = document.getElementById("monthly-table-total");
       h1.innerHTML = `<th rowspan="2" class="sticky-col">NAME</th><th rowspan="2">TRADE</th>`; h2.innerHTML = "";
@@ -1724,13 +1682,10 @@
           const monthAtt = appState.attendance[mKey] || {};
           const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; 
           tD+=(r.duty||0); tO+=(r.ot||0); tDA+=(r.adv||0); dD[d]+=(r.duty||0); dO[d]+=(r.ot||0);
-          
-          const isSupervisorLocked = (userRole === 'supervisor' && r.duty !== undefined && r.duty > 0);
-          const isLocked = isMasterRollup || (userRole === 'incharge' && r.locked) || isSupervisorLocked; 
-
+          const isLocked = isMasterRollup || (userRole === 'incharge' && r.locked) || (userRole === 'supervisor' && r.duty > 0); 
           const p1 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyDuty('${w.id}', ${d}, parseFloat(this.value)||0, 'worker')"` : `readonly onclick="requireAuthClick(this)"`;
           const p2 = (userRole !== 'viewer' && !isLocked) ? `onblur="setDailyOT('${w.id}', ${d}, this.value)"` : `readonly onclick="requireAuthClick(this)"`;
-          c += `<td><input class="tbl-input" type="text" value="${r.duty||''}" ${p1}></td><td><input class="tbl-input" type="text" value="${r.ot||''}" ${p2}></td>`;
+          c += `<td><input class="tbl-input" type="number" step="0.5" min="0" max="1" value="${r.duty||''}" ${p1}></td><td><input class="tbl-input" type="number" step="0.5" min="0" value="${r.ot||''}" ${p2}></td>`;
         }
         const rt=w.rate||0, am=(tD*rt)+(tO*(rt/8)), tAd=(appState.advances[w.id]||0)+tDA, bl=am-tAd; gD+=tD; gO+=tO; gAm+=am; gAd+=tAd; gB+=bl;
         const tr = document.createElement("tr"); tr.innerHTML=`<td class="sticky-col text-left"><b>${w.name}</b></td><td class="text-left">${w.desig}</td>${c}<td style="font-weight:bold; color:var(--primary);">${tD.toFixed(1)}</td><td style="font-weight:bold; color:var(--secondary);">${tO.toFixed(1)}</td><td class="text-right">₹${rt}</td><td class="text-right" style="font-weight:bold;">₹${am.toFixed(0)}</td><td class="text-right" style="color:var(--danger); font-weight:700;">₹${tAd.toFixed(0)}</td><td class="text-right" style="font-weight:bold; color:${bl>=0?'var(--primary)':'var(--danger)'}">₹${bl.toFixed(0)}</td>`; tb.appendChild(tr);
@@ -1761,7 +1716,8 @@
     }
     
     function exportDatabase() {
-      if(userRole !== 'admin') { requireAuthClick(); return;}
+      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if(!canManage) { requireAuthClick(); return;}
       const b = new Blob([JSON.stringify({ sites: siteStructure, currentSite: currentSite, appData: appState })], { type: "application/json" });
       const a = document.createElement("a"); a.href = URL.createObjectURL(b); a.download = `GI_DB_Backup_${currentSite||'empty'}.json`; a.click(); showToast("Backup saved");
     }
@@ -1769,9 +1725,7 @@
     function exportToExcel() {
       if(!currentSite) { showToast("No site selected to export."); return; }
       const sL = document.getElementById("selected-site-label").textContent.replace(/[^a-zA-Z0-9]/g,'_');
-      
       const ws_data = [["Global Industries - Monthly Attendance Register"], [sL], []];
-      
       const mKey = getAttendanceMonthKey();
       const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
 
@@ -1783,48 +1737,28 @@
       appState.workers.forEach(w => {
         let row = [w.name, w.desig], tD=0, tO=0, tA=0;
         const monthAtt = appState.attendance[mKey] || {};
-        for(let d=1; d<=currentMonthDays; d++) {
-          const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0, ot:0, adv:0};
-          tD += (r.duty||0); tO += (r.ot||0); tA += (r.adv||0);
-          row.push(r.duty||0, r.ot||0);
-        }
+        for(let d=1; d<=currentMonthDays; d++) { const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0, ot:0, adv:0}; tD += (r.duty||0); tO += (r.ot||0); tA += (r.adv||0); row.push(r.duty||0, r.ot||0); }
         const rt = w.rate||0, amt = (tD*rt)+(tO*(rt/8)), fA = (appState.advances[w.id]||0)+tA, bal = amt-fA;
-        row.push(tD, tO, rt, Math.round(amt), Math.round(fA), Math.round(bal));
-        ws_data.push(row);
+        row.push(tD, tO, rt, Math.round(amt), Math.round(fA), Math.round(bal)); ws_data.push(row);
       });
 
-      const wb = XLSX.utils.book_new();
-      const ws = XLSX.utils.aoa_to_sheet(ws_data);
-      XLSX.utils.book_append_sheet(wb, ws, "Attendance");
-      XLSX.writeFile(wb, `GI_Attendance_${sL}.xlsx`);
-      showToast("Excel spreadsheet downloaded successfully!");
+      const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
+      XLSX.utils.book_append_sheet(wb, ws, "Attendance"); XLSX.writeFile(wb, `GI_Attendance_${sL}.xlsx`); showToast("Excel downloaded!");
     }
 
     function populateSlipWorkerSelect() { const select = document.getElementById("slip-worker-select"); if(!select) return; select.innerHTML = '<option value="">-- Choose Worker --</option>'; appState.workers.forEach(w => { const opt = document.createElement("option"); opt.value = w.id; opt.textContent = `${w.name} (${w.desig})`; select.appendChild(opt); }); renderWageSlip(); }
     
     function renderWageSlip() { 
-      const display = document.getElementById("wage-slip-display"); 
-      const select = document.getElementById("slip-worker-select"); 
-      const themeSelect = document.getElementById("slip-theme-select");
-      const chosenTheme = themeSelect ? themeSelect.value : 'theme-navy';
-      const mL = document.getElementById("month-select").selectedOptions[0].text;
-      
+      const display = document.getElementById("wage-slip-display"); const select = document.getElementById("slip-worker-select"); const themeSelect = document.getElementById("slip-theme-select");
+      const chosenTheme = themeSelect ? themeSelect.value : 'theme-navy'; const mL = document.getElementById("month-select").selectedOptions[0].text;
       if(!select || !select.value) { display.innerHTML = '<div class="empty-state">Select a worker above to generate statement.</div>'; return; } 
       
-      const w = appState.workers.find(i => String(i.id) === String(select.value)); 
-      let tDuty = 0, tOT = 0, tDailyAdv = 0; 
-      const mKey = getAttendanceMonthKey();
-      const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
+      const w = appState.workers.find(i => String(i.id) === String(select.value)); let tDuty = 0, tOT = 0, tDailyAdv = 0; 
+      const mKey = getAttendanceMonthKey(); const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
       const monthAtt = appState.attendance[mKey] || {};
+      for (let d = 1; d <= currentMonthDays; d++) { const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; tDuty += (r.duty||0); tOT += (r.ot||0); tDailyAdv += (r.adv||0); } 
       
-      for (let d = 1; d <= currentMonthDays; d++) { 
-        const r = (monthAtt[w.id] && monthAtt[w.id][d]) || {duty:0,ot:0,adv:0}; 
-        tDuty += (r.duty||0); tOT += (r.ot||0); tDailyAdv += (r.adv||0); 
-      } 
-      
-      const grossAmt = (tDuty * w.rate) + (tOT * (w.rate / 8)); 
-      const totalAdv = (appState.advances[w.id] || 0) + tDailyAdv; 
-      const netPayable = grossAmt - totalAdv; 
+      const grossAmt = (tDuty * w.rate) + (tOT * (w.rate / 8)); const totalAdv = (appState.advances[w.id] || 0) + tDailyAdv; const netPayable = grossAmt - totalAdv; 
       
       display.innerHTML = ` 
         <div class="slip-box ${chosenTheme}" id="slip-print-area"> 
@@ -1850,18 +1784,11 @@
     function downloadSlipAsPDF() {
       const element = document.getElementById('slip-print-area');
       if(!element) { showToast("Generate a slip first."); return; }
-      const opt = {
-        margin:       10,
-        filename:     'Wage_Settlement_Slip.pdf',
-        image:        { type: 'jpeg', quality: 0.98 },
-        html2canvas:  { scale: 2, useCORS: true },
-        jsPDF:        { unit: 'mm', format: 'a4', orientation: 'portrait' }
-      };
-      html2pdf().from(element).set(opt).save();
-      showToast("PDF downloaded successfully!");
+      const opt = { margin: 10, filename: 'Wage_Settlement_Slip.pdf', image: { type: 'jpeg', quality: 0.98 }, html2canvas: { scale: 2, useCORS: true }, jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' } };
+      html2pdf().from(element).set(opt).save(); showToast("PDF downloaded successfully!");
     }
 
     window.onload = init;
-</script>
+  </script>
 </body>
 </html>
