@@ -14,9 +14,10 @@
   
   <link rel="manifest" href='data:application/manifest+json,{"name":"Global Industries Portal","short_name":"GlobalInd","display":"standalone","background_color":"#F0F4F8","theme_color":"#102A43","icons":[{"src":"data:image/svg+xml;base64,PHN2ZyB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciIHZpZXdCb3g9IjAgMCAxMDAgMTAwIj48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSI0NSIgZmlsbD0iIzEwMkE0MyIvPjx0ZXh0IHg9IjUwIiB5PSI1NiIgZmlsbD0iI0ZGRkZGRiIgZm9udC1mYW1pbHk9IkFyaWFsIiBmb250LXNpemU9IjIwIiBmb250LXdlaWdodD0iYm9sZCIgdGV4dC1hbmNob3I9Im1pZGRsZSI+R0k8L3RleHQ+PC9zdmc+","sizes":"192x192","type":"image/svg+xml"}]}'>
 
-  <!-- Firebase SDKs -->
+  <!-- Firebase SDKs (Primary, Database & Storage Compat) -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.1/firebase-app-compat.min.js"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.1/firebase-database-compat.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/firebase/10.8.1/firebase-storage-compat.min.js"></script>
   
   <!-- Export & PDF Libraries -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -28,7 +29,7 @@
 
   <style>
     /* =========================================
-       30+ ADVANCED THEMES (INCLUDING LIQUID GLASS)
+       THEMES SETUP
        ========================================= */
     :root {
       --primary: #102A43; --primary-light: #1F4E78; --secondary: #2D68C4;
@@ -302,7 +303,6 @@
     #auth-status-btn:hover { transform: translateY(-2px); box-shadow: 0 6px 15px rgba(0,0,0,0.3); }
     .shake-error { animation: pulseWarning 0.4s ease; }
     
-    /* New CSS for Voice & Camera integration */
     .mic-btn.recording { animation: pulseWarning 1s infinite; background: var(--danger); color: white !important; border-color: var(--danger) !important; }
     .stock-badge { padding: 6px 12px; border-radius: 20px; font-size: 12px; font-weight: 800; background: var(--bg); border: 1px solid var(--border); }
     .stock-badge.low-stock { border: 2px solid var(--danger); background: #FEF2F2; color: #991B1B; animation: pulseWarning 2s infinite; }
@@ -606,7 +606,7 @@
           <div class="custom-dropdown-menu" id="site-dropdown"></div>
         </div>
         <div class="status-group">
-          <!-- 30+ Theme Selector Dropdown -->
+          <!-- Theme Selector Dropdown -->
           <select id="theme-selector" onchange="changeTheme(this.value)" style="padding: 6px 12px; font-size: 12px; border-radius: 12px; background: rgba(255,255,255,0.2); color: white; border: 1px solid rgba(255,255,255,0.3); font-weight:800; cursor:pointer;">
             <option value="light" style="color:#000;">☀️ Light Default</option>
             <option value="dark" style="color:#000;">🌙 Dark Slate</option>
@@ -645,8 +645,7 @@
         </div>
       </div>
     </header>
-
-    <div class="container">
+<div class="container">
       <div class="dashboard-grid">
         <div class="stat-card">
           <span class="stat-label">👷 Workers</span>
@@ -697,6 +696,7 @@
            <button class="btn btn-primary" style="flex:1;" onclick="exportDatabase()">💾 Backup DB</button>
         </div>
       </div>
+      
       <!-- TAB 1: DAILY VIEW -->
       <div id="daily-view" class="tab-content active">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
@@ -745,7 +745,7 @@
           <h4>Site Weather & Rain Logs</h4>
           <div style="display:flex; gap:16px; margin-bottom:16px;">
             <select id="dpr-weather-select" onchange="checkWeatherCondition()" onclick="requireAuthClick(this)" style="flex:1;">
-              <option>☀️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
+              <option>☀️️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
             </select>
           </div>
           <div id="rain-settings" style="display:none; gap:16px; background:rgba(59,130,246,0.08); padding:16px; border-radius:12px; border:1px solid #BFDBFE;">
@@ -849,7 +849,7 @@
         </div>
       </div>
 
-      <!-- TAB 8: ONE DAY REPORT (NEW) -->
+      <!-- TAB 8: ONE DAY REPORT -->
       <div id="one-day-report-view" class="tab-content">
         <div class="dpr-section">
           <h3 style="color:var(--primary); font-size:20px; margin-bottom: 12px;">🗓️ One Day Master Report</h3>
@@ -898,7 +898,7 @@
         </div>
       </div>
 
-      <!-- TAB 10: AI SITE ASSISTANT & PREDICTIVE FORECAST -->
+      <!-- TAB 10: AI SITE ASSISTANT -->
       <div id="ai-view" class="tab-content">
         <div class="dpr-section" style="border-left: 6px solid #3B82F6;">
           <h3 style="color:var(--primary); font-size:20px; margin-bottom: 8px;">🤖 AI Site Intelligence & Quantum-Neural Simulator</h3>
@@ -1112,11 +1112,24 @@
     });
 
     /* =========================================
-       1. FIREBASE SETUP & GLOBALS
+       1. FIREBASE SETUP & GLOBALS (DUAL CONNECTION)
        ========================================= */
-    const DB_BASE_URL = "https://g12343-default-rtdb.asia-southeast1.firebasedatabase.app";
-    firebase.initializeApp({ databaseURL: DB_BASE_URL, projectId: "g12343" });
-    const db = firebase.database();
+    // Project A: Primary Database (Text/Attendance Data)
+    const configA = {
+      databaseURL: "https://g12343-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "g12343"
+    };
+    firebase.initializeApp(configA);
+    const db = firebase.database(); 
+
+    // Project B: Backup Database & Photo Storage
+    const configB = {
+      databaseURL: "https://global-industries-backup-default-rtdb.asia-southeast1.firebasedatabase.app/",
+      projectId: "global-industries-backup",
+      storageBucket: "global-industries-backup.appspot.com" 
+    };
+    const secondaryApp = firebase.initializeApp(configB, "BackupProject");
+    const storageBackup = secondaryApp.storage(); 
 
     let siteStructure = []; 
     let currentSite = localStorage.getItem('gi_last_site') || null;
@@ -1205,6 +1218,7 @@
          if(d) {
              d.matReceived = Array.isArray(d.matReceived) ? d.matReceived.filter(Boolean) : (d.matReceived ? Object.values(d.matReceived).filter(Boolean) : []);
              d.matConsumed = Array.isArray(d.matConsumed) ? d.matConsumed.filter(Boolean) : (d.matConsumed ? Object.values(d.matConsumed).filter(Boolean) : []);
+             d.photos = Array.isArray(d.photos) ? d.photos : [];
          }
       });
       return state;
@@ -1391,10 +1405,11 @@
                 aggregated.timeline[date].push(...Object.values(tArray));
               });
               if(group.dpr) Object.entries(group.dpr).forEach(([date, dData]) => {
-                if(!aggregated.dpr[date]) aggregated.dpr[date] = { work: "", matReceived: [], matConsumed: [] };
+                if(!aggregated.dpr[date]) aggregated.dpr[date] = { work: "", matReceived: [], matConsumed: [], photos: [] };
                 if(dData.work) aggregated.dpr[date].work += (aggregated.dpr[date].work ? "\n---\n" : "") + dData.work;
                 if(dData.matReceived) aggregated.dpr[date].matReceived.push(...Object.values(dData.matReceived));
                 if(dData.matConsumed) aggregated.dpr[date].matConsumed.push(...Object.values(dData.matConsumed));
+                if(dData.photos) aggregated.dpr[date].photos.push(...Object.values(dData.photos));
               });
             });
           }
@@ -1705,7 +1720,7 @@
       });
       c.innerHTML = htmlBuffer;
     }
-// Helper to normalize duty values between UI symbols ('P', 'A', 'H') and calculation weights (1, 0, 0.5)
+
     function parseDutyInput(val) {
       if (val === null || val === undefined || val === '') return null;
       const s = String(val).trim().toUpperCase();
@@ -1815,10 +1830,17 @@
       };
     }
 
-    // CAMERA PHOTO PREVIEW INTEGRATION
+    // FIREBASE STORAGE PHOTO UPLOAD (PROJECT B)
     function handlePhotoUpload(event) {
+      if (!currentSite || !currentSubgroup) {
+        showToast("Please select a valid site and group first.");
+        return;
+      }
+
       const file = event.target.files[0];
       if (!file) return;
+
+      // 1. Generate Local Preview
       const reader = new FileReader();
       reader.onload = function(e) {
         const previewContainer = document.getElementById("dpr-photo-preview");
@@ -1834,37 +1856,62 @@
         img.style.border = "2px solid var(--border)";
         img.style.objectFit = "cover";
 
-        const delBtn = document.createElement("button");
-        delBtn.innerHTML = "✖";
-        delBtn.style.position = "absolute";
-        delBtn.style.top = "-5px";
-        delBtn.style.right = "-5px";
-        delBtn.style.background = "var(--danger)";
-        delBtn.style.color = "white";
-        delBtn.style.border = "none";
-        delBtn.style.borderRadius = "50%";
-        delBtn.style.width = "20px";
-        delBtn.style.height = "20px";
-        delBtn.style.fontSize = "10px";
-        delBtn.style.cursor = "pointer";
-        delBtn.onclick = () => imgWrapper.remove();
-
         imgWrapper.appendChild(img);
-        imgWrapper.appendChild(delBtn);
         previewContainer.appendChild(imgWrapper);
-        showToast("Photo attached to daily log.");
       };
       reader.readAsDataURL(file);
+
+      // 2. Upload to Firebase Storage (Project B)
+      showToast("Uploading photo to storage bucket...");
+      const storageRef = storageBackup.ref();
+      const photoName = `site_photos/${currentSite}/${currentSubgroup}/${Date.now()}_${file.name}`;
+      const photoRef = storageRef.child(photoName);
+
+      photoRef.put(file).then((snapshot) => {
+        snapshot.ref.getDownloadURL().then((downloadURL) => {
+          showToast("Photo uploaded successfully!");
+          
+          // 3. Save the download link in the Main Database (Project A)
+          const dk = getSelectedDateKey();
+          if(!appState.dpr[dk]) appState.dpr[dk] = {};
+          if(!appState.dpr[dk].photos) appState.dpr[dk].photos = [];
+          
+          appState.dpr[dk].photos.push(downloadURL);
+          saveState(); // Saves the link to Project A
+        });
+      }).catch(error => {
+        showToast("Error uploading photo: " + error.message);
+        console.error("Storage Error:", error);
+      });
     }
 
     function checkWeatherCondition() { const w = document.getElementById("dpr-weather-select").value; document.getElementById("rain-settings").style.display = w.includes('Rain') ? "flex" : "none"; autoSaveDPR(); }
 
     function renderDPRView() {
       const dk = getSelectedDateKey(); 
-      const d = appState.dpr[dk] || { work: "", weather: "☀️ Sunny / Clear", rainStart: "", rainEnd: "", workStop: "No", matReceived: [], matConsumed: [] };
+      const d = appState.dpr[dk] || { work: "", weather: "☀️ Sunny / Clear", rainStart: "", rainEnd: "", workStop: "No", matReceived: [], matConsumed: [], photos: [] };
       document.getElementById("dpr-work-text").value = d.work || ""; document.getElementById("dpr-weather-select").value = d.weather || "☀️ Sunny / Clear"; 
       document.getElementById("dpr-rain-start").value = d.rainStart || ""; document.getElementById("dpr-rain-end").value = d.rainEnd || ""; 
       document.getElementById("dpr-work-stopped").value = d.workStop || "No"; checkWeatherCondition(); 
+
+      // Render Existing Photos
+      const previewContainer = document.getElementById("dpr-photo-preview");
+      previewContainer.innerHTML = "";
+      if (d.photos && d.photos.length > 0) {
+        d.photos.forEach(url => {
+          const imgWrapper = document.createElement("div");
+          imgWrapper.style.display = "inline-block";
+          const img = document.createElement("img");
+          img.src = url;
+          img.style.height = "100px";
+          img.style.width = "100px";
+          img.style.borderRadius = "8px";
+          img.style.border = "2px solid var(--border)";
+          img.style.objectFit = "cover";
+          imgWrapper.appendChild(img);
+          previewContainer.appendChild(imgWrapper);
+        });
+      }
 
       const rC = document.getElementById("dpr-mat-received-list"); rC.innerHTML = "";
       const rMats = d.matReceived || [];
@@ -1908,9 +1955,23 @@
       clearTimeout(autoSaveTimer);
       autoSaveTimer = setTimeout(() => {
         const dk = getSelectedDateKey(); const rMats = [], cMats = [];
+        
+        // Preserve existing photos if they exist
+        const existingPhotos = (appState.dpr[dk] && appState.dpr[dk].photos) ? appState.dpr[dk].photos : [];
+
         document.querySelectorAll("#dpr-mat-received-list .material-row").forEach(r => { const i = r.querySelector(".material-item").value, q = r.querySelector(".material-qty").value, u = r.querySelector(".material-unit").value; if (i.trim() || q) rMats.push({ item: i, qty: q, unit: u }); });
         document.querySelectorAll("#dpr-mat-consumed-list .material-row").forEach(r => { const i = r.querySelector(".material-item").value, q = r.querySelector(".material-qty").value, u = r.querySelector(".material-unit").value; if (i.trim() || q) cMats.push({ item: i, qty: q, unit: u }); });
-        appState.dpr[dk] = { work: document.getElementById("dpr-work-text").value, weather: document.getElementById("dpr-weather-select").value, rainStart: document.getElementById("dpr-rain-start").value, rainEnd: document.getElementById("dpr-rain-end").value, workStop: document.getElementById("dpr-work-stopped").value, matReceived: rMats, matConsumed: cMats }; 
+        
+        appState.dpr[dk] = { 
+            work: document.getElementById("dpr-work-text").value, 
+            weather: document.getElementById("dpr-weather-select").value, 
+            rainStart: document.getElementById("dpr-rain-start").value, 
+            rainEnd: document.getElementById("dpr-rain-end").value, 
+            workStop: document.getElementById("dpr-work-stopped").value, 
+            matReceived: rMats, 
+            matConsumed: cMats,
+            photos: existingPhotos
+        }; 
         saveState(); calculateLiveStock();
       }, 500);
     }
@@ -2236,13 +2297,12 @@
         let tA = appState.advances[w.id] || 0; 
         const mKey = getAttendanceMonthKey(); const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
         for (let d=1; d<=currentMonthDays; d++) { const monthAtt = appState.attendance[mKey] || {}; tA += (monthAtt[w.id] && monthAtt[w.id][d] && monthAtt[w.id][d].adv) || 0; }
-        const act = (canManage && !isMasterRollup) ? `<div style="display:flex; gap:10px;"><button class="btn btn-outline" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'worker')">✏️️ Edit</button><button class="btn btn-danger" style="flex:1;" onclick="deleteWorker('${w.id}', 'worker')">🗑️</button></div>` : '';
+        const act = (canManage && !isMasterRollup) ? `<div style="display:flex; gap:10px;"><button class="btn btn-outline" style="flex:1;" onclick="openEditWorkerModal('${w.id}', 'worker')">✏ Edit</button><button class="btn btn-danger" style="flex:1;" onclick="deleteWorker('${w.id}', 'worker')">🗑️</button></div>` : '';
         htmlBuffer += `<div class="worker-card"><div style="display:flex;align-items:center;gap:12px;margin-bottom:6px;"><div class="avatar" style="background:#2D68C4">${getInitials(w.name)}</div><div><div style="font-size:16px;font-weight:800;">${w.name}</div><div style="font-size:13px;color:var(--text-muted);">${w.desig}</div></div></div><div style="display:flex;justify-content:space-between;font-size:14px;margin-bottom:6px;"><span>Rate: <b>₹${w.rate}</b></span><span>Adv: <b style="color:var(--danger);">₹${tA}</b></span></div>${act}</div>`;
       });
       c.innerHTML = htmlBuffer;
     }
 
-    // FIXED: Monthly table explicitly rendering 'P', 'A', 'H' symbols accurately using parsed values
     function renderMonthlyTable() {
       const h1 = document.querySelector("#monthly-table thead tr:first-child");
       const h2 = document.getElementById("sub-headers-row");
