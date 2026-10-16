@@ -240,6 +240,10 @@
       60% { transform: scale(1.05); opacity: 1; }
       100% { transform: scale(1); opacity: 1; } 
     }
+    @keyframes popIn {
+      0% { transform: translateY(-10px) scale(0.95); opacity: 0; }
+      100% { transform: translateY(0) scale(1); opacity: 1; }
+    }
     @keyframes slideUpFade { from { opacity: 0; transform: translateY(40px); } to { opacity: 1; transform: translateY(0); } }
     @keyframes pulseWarning { 0% { transform: scale(1); } 50% { transform: scale(1.08); background: var(--danger); box-shadow: 0 0 15px var(--danger);} 100% { transform: scale(1); } }
     
@@ -341,6 +345,8 @@
     .btn-danger { background: linear-gradient(135deg, #EF4444, #DC2626); color: white; }
     .btn-whatsapp { background: linear-gradient(135deg, #25D366, #128C7E); color: white; }
     .btn-small { padding: 10px 14px; font-size: 13px; border-radius: 12px;}
+    .btn-remove-row { background: rgba(239, 68, 68, 0.1); color: var(--danger); border: 1px solid rgba(239, 68, 68, 0.3); cursor: pointer; font-weight: 900; transition: 0.2s var(--spring); }
+    .btn-remove-row:hover { background: var(--danger); color: white; }
 
     .tab-content { display: none; }
     .tab-content.active { display: block; animation: slideUpFade 0.5s var(--spring) forwards; }
@@ -354,8 +360,8 @@
     .worker-card { background: var(--card-bg); backdrop-filter: var(--glass-blur); border-radius: 20px; padding: 22px; box-shadow: var(--shadow); border: 1px solid var(--border); display: flex; flex-direction: column; gap: 16px; transition: 0.4s var(--spring); animation: slideUpFade 0.5s var(--spring) backwards;}
     .worker-card:hover { transform: translateY(-5px); box-shadow: 0 15px 30px rgba(0,0,0,0.1); border-color: var(--secondary); }
     
-    .kp-card { border: 2px solid #FCD34D; background: linear-gradient(145deg, var(--card-bg), #FFFBEB); }
-    .kp-card .worker-name { color: #92400E; }
+    .kp-card { border: 2px solid #FCD34D; background: linear-gradient(145deg, var(--card-bg), rgba(254, 243, 199, 0.25)); }
+    .kp-card .worker-name { color: var(--primary); }
     
     .worker-card-header { display: flex; align-items: center; gap: 16px; margin-bottom: 6px; }
     .avatar { width: 54px; height: 54px; border-radius: 50%; color: white; display: flex; align-items: center; justify-content: center; font-size: 20px; font-weight: 900; flex-shrink: 0; box-shadow: 0 6px 12px rgba(0,0,0,0.15);}
@@ -388,6 +394,11 @@
     table { width: 100%; border-collapse: collapse; font-size: 14px; white-space: nowrap; color: var(--text); }
     th, td { border: 1px solid var(--border); padding: 14px 10px; text-align: center; }
     th { background: var(--primary-light); color: white; font-weight: 900; font-size: 13px;}
+    th.tier2 { font-size: 11px; padding: 8px 6px; background: var(--primary); }
+    th.summary-th { background: var(--primary); }
+    .text-left { text-align: left !important; }
+    .text-right { text-align: right !important; }
+    .total-row td { background: var(--bg); font-weight: 900; border-top: 2px solid var(--primary); }
     .sticky-col { position: sticky; left: 0; background: var(--card-bg); z-index: 10; border-right: 3px solid var(--border); }
     th.sticky-col { background: var(--primary-light); z-index: 20; }
     
@@ -410,6 +421,12 @@
     .log-time { font-size: 11px; color: var(--text-muted); margin-top: 6px; font-weight: normal;}
 
     #main-app { display: none; opacity: 0; width: 100%; min-height: 100vh; flex-direction: column; }
+
+    @media print {
+      body * { visibility: hidden; }
+      #slip-print-area, #slip-print-area * { visibility: visible; }
+      #slip-print-area { position: absolute; left: 0; top: 0; width: 100%; max-width: 100% !important; box-shadow: none !important; }
+    }
 
     @media(max-width: 768px) {
       .container { padding: 12px; }
@@ -471,6 +488,18 @@
     </script>
 
     <div id="toast"><span id="toast-msg">System Ready</span></div>
+
+    <!-- CONFIRMATION MODAL (REPLACES BLOCKED NATIVE CONFIRM) -->
+    <div id="confirm-overlay" class="overlay" style="z-index: 100001;">
+      <div class="modal-box-center" style="border-top: 6px solid var(--danger);">
+        <h2 id="confirm-modal-title">⚠️ Confirm Action</h2>
+        <p id="confirm-modal-msg" style="font-weight: 700; margin-top: 10px;">Are you sure you want to proceed?</p>
+        <div style="display: flex; gap: 10px; margin-top: 20px;">
+          <button class="btn btn-outline" style="flex:1;" onclick="resolveConfirmModal(false)">Cancel</button>
+          <button class="btn btn-danger" style="flex:1;" onclick="resolveConfirmModal(true)">Confirm</button>
+        </div>
+      </div>
+    </div>
 
     <!-- CONFLICT DETECTOR OVERLAY -->
     <div id="conflict-overlay" class="overlay" style="z-index: 100000;">
@@ -645,7 +674,8 @@
         </div>
       </div>
     </header>
-<div class="container">
+
+    <div class="container">
       <div class="dashboard-grid">
         <div class="stat-card">
           <span class="stat-label">👷 Workers</span>
@@ -745,7 +775,7 @@
           <h4>Site Weather & Rain Logs</h4>
           <div style="display:flex; gap:16px; margin-bottom:16px;">
             <select id="dpr-weather-select" onchange="checkWeatherCondition()" onclick="requireAuthClick(this)" style="flex:1;">
-              <option>☀️️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
+              <option>☀️ Sunny / Clear</option><option>☁️ Cloudy</option><option>🌧 Light Rain</option><option>⛈️ Heavy Rain</option>
             </select>
           </div>
           <div id="rain-settings" style="display:none; gap:16px; background:rgba(59,130,246,0.08); padding:16px; border-radius:12px; border:1px solid #BFDBFE;">
@@ -864,7 +894,7 @@
           <div style="display:flex; gap:12px; margin-bottom: 20px; flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="generateReport('single')" style="background:#0284C7; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Day Report</button>
             <button class="btn btn-success" onclick="exportCustomReportExcel('single')" style="flex:1; display:none;" id="btn-rep-excel-single">📊 Export Excel</button>
-            <button class="btn btn-primary" onclick="exportCustomReportPDF('single-report-container', 'One_Day_Report')" style="flex:1; display:none;" id="btn-rep-pdf-single" style="background:#2563EB;">📄 Export PDF</button>
+            <button class="btn btn-primary" onclick="exportCustomReportPDF('single-report-container', 'One_Day_Report')" style="flex:1; display:none; background:#2563EB;" id="btn-rep-pdf-single">📄 Export PDF</button>
           </div>
           
           <div id="single-report-results" style="margin-top: 24px; display: none;"></div>
@@ -890,7 +920,7 @@
           <div style="display:flex; gap:12px; margin-bottom: 20px; flex-wrap:wrap;">
             <button class="btn btn-primary" onclick="generateReport('range')" style="background:#9333EA; font-size: 16px; padding: 16px; flex:2;">🚀 Generate Master Report</button>
             <button class="btn btn-success" onclick="exportCustomReportExcel('range')" style="flex:1; display:none;" id="btn-rep-excel">📊 Export Excel</button>
-            <button class="btn btn-primary" onclick="exportCustomReportPDF('custom-report-container', 'Custom_Range_Report')" style="flex:1; display:none;" id="btn-rep-pdf" style="background:#2563EB;">📄 Export PDF</button>
+            <button class="btn btn-primary" onclick="exportCustomReportPDF('custom-report-container', 'Custom_Range_Report')" style="flex:1; display:none; background:#2563EB;" id="btn-rep-pdf">📄 Export PDF</button>
             <button class="btn btn-whatsapp" onclick="exportCustomReportWhatsApp()" style="flex:1; display:none;" id="btn-rep-wa">📲 WhatsApp</button>
           </div>
           
@@ -929,7 +959,7 @@
         <div style="text-align:left;"><label style="font-size:12px;font-weight:bold;color:var(--text-muted)">Designation / Trade</label>
           <input type="text" id="w-desig" list="trade-suggestions" placeholder="Select or type trade..." style="margin-bottom:12px;">
           <datalist id="trade-suggestions">
-            <option value="Labor"><option value="Mason"><option value="Head Mason"><option value="Helper"><option value="Site Engineer"><option value="Project Manager"><option value="Bar Bender"><option value="Steel Fixer"><option value="Carpenter"><option value="Scaffolder"><option value="Electrician"><option value="Plumber"><option value="Welder"><option value="Welder (Argon)"><option value="Operator"><option value="Heavy Equipment Operator"><option value="Fitter"><option value="Rigger"><option value="Surveyor"><option value="Security Guard"><option value="Painter"><option value="Foreman"><option value="OWNER">
+            <option value="Labor"></option><option value="Mason"></option><option value="Head Mason"></option><option value="Helper"></option><option value="Site Engineer"></option><option value="Project Manager"></option><option value="Bar Bender"></option><option value="Steel Fixer"></option><option value="Carpenter"></option><option value="Scaffolder"></option><option value="Electrician"></option><option value="Plumber"></option><option value="Welder"></option><option value="Welder (Argon)"></option><option value="Operator"></option><option value="Heavy Equipment Operator"></option><option value="Fitter"></option><option value="Rigger"></option><option value="Surveyor"></option><option value="Security Guard"></option><option value="Painter"></option><option value="Foreman"></option><option value="OWNER"></option>
           </datalist>
         </div>
         <div style="display:flex; gap:12px; margin-bottom:20px;" id="wage-input-row">
@@ -1131,19 +1161,43 @@
     const secondaryApp = firebase.initializeApp(configB, "BackupProject");
     const storageBackup = secondaryApp.storage(); 
 
+    function safeGetStorage(key) {
+      try { return localStorage.getItem(key); } catch (e) { return null; }
+    }
+    function safeSetStorage(key, val) {
+      try { localStorage.setItem(key, val); } catch (e) { console.warn("LocalStorage unavailable or quota exceeded."); }
+    }
+    function safeRemoveStorage(key) {
+      try { localStorage.removeItem(key); } catch (e) {}
+    }
+
+    let confirmCallback = null;
+    function showConfirmModal(message, onConfirm, title = "⚠️ Confirm Action") {
+      document.getElementById('confirm-modal-title').textContent = title;
+      document.getElementById('confirm-modal-msg').textContent = message;
+      confirmCallback = onConfirm;
+      document.getElementById('confirm-overlay').style.display = 'flex';
+    }
+    window.resolveConfirmModal = function(confirmed) {
+      document.getElementById('confirm-overlay').style.display = 'none';
+      const cb = confirmCallback;
+      confirmCallback = null;
+      if (confirmed && typeof cb === 'function') cb();
+    };
+
     let siteStructure = []; 
-    let currentSite = localStorage.getItem('gi_last_site') || null;
-    let currentSubgroup = localStorage.getItem('gi_last_sub') || null;
+    let currentSite = safeGetStorage('gi_last_site') || null;
+    let currentSubgroup = safeGetStorage('gi_last_sub') || null;
     
     let appState = { workers: [], keyPersons: [], attendance: {}, kpAttendance: {}, advances: {}, dpr: {}, timeline: {} };
-    let userName = localStorage.getItem('gi_user_profile') || '';
-    let userRole = localStorage.getItem('gi_role') || 'viewer';
+    let userName = safeGetStorage('gi_user_profile') || '';
+    let userRole = safeGetStorage('gi_role') || 'viewer';
     
     let contextTargetId = null; let autoSaveTimer = null; let currentSiteRef = null;
     const deviceType = /Mobi|Android|iPhone/i.test(navigator.userAgent) ? '📱 Mobile' : '💻 Desktop';
 
     let totalSyncs = 0; let peakUsers = 1; const sessionStartTime = Date.now();
-    let isMasterRollup = false; let isSavingToCloud = false; let pendingCloudState = null;
+    let isMasterRollup = (currentSubgroup === 'ALL_GROUPS'); let isSavingToCloud = false; let pendingCloudState = null;
 
     function initLiveClock() {
       setInterval(() => {
@@ -1161,7 +1215,7 @@
 
     function init() {
       initLiveClock();
-      const savedTheme = localStorage.getItem('gi_theme') || 'light';
+      const savedTheme = safeGetStorage('gi_theme') || 'light';
       document.body.setAttribute('data-theme', savedTheme);
       const thSel = document.getElementById('theme-selector'); if(thSel) thSel.value = savedTheme;
 
@@ -1183,7 +1237,7 @@
 
     function changeTheme(themeName) {
       document.body.setAttribute('data-theme', themeName);
-      localStorage.setItem('gi_theme', themeName);
+      safeSetStorage('gi_theme', themeName);
       showToast(`Theme changed to ${themeName.replace('-', ' ')}`);
     }
 
@@ -1218,7 +1272,7 @@
          if(d) {
              d.matReceived = Array.isArray(d.matReceived) ? d.matReceived.filter(Boolean) : (d.matReceived ? Object.values(d.matReceived).filter(Boolean) : []);
              d.matConsumed = Array.isArray(d.matConsumed) ? d.matConsumed.filter(Boolean) : (d.matConsumed ? Object.values(d.matConsumed).filter(Boolean) : []);
-             d.photos = Array.isArray(d.photos) ? d.photos : [];
+             d.photos = Array.isArray(d.photos) ? d.photos : (d.photos ? Object.values(d.photos).filter(Boolean) : []);
          }
       });
       return state;
@@ -1229,8 +1283,8 @@
 
     function saveProfile() {
       const name = document.getElementById('profile-name-input').value.trim();
-      if (!name) { alert("Please enter a valid name."); return; }
-      userName = name; localStorage.setItem('gi_user_profile', name); 
+      if (!name) { showToast("Please enter a valid name."); return; }
+      userName = name; safeSetStorage('gi_user_profile', name); 
       document.getElementById('profile-overlay').style.display = 'none'; document.getElementById('profile-display').innerHTML = `👤 ${name}`; 
       initPresence(); logActivity("Joined the portal");
     }
@@ -1250,9 +1304,10 @@
         const list = document.getElementById('online-users-list'); list.innerHTML = ''; let count = 0; let mobiles = 0; let desktops = 0;
         if(s.val()) {
           Object.values(s.val()).forEach(u => { 
+            if(!u) return;
             count++; if(u.device && u.device.includes('Mobile')) mobiles++; else desktops++;
             const t = new Date(u.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
-            list.innerHTML += `<div class="online-tag"><div style="display:flex; align-items:center;"><div class="pulse-dot"></div> <b>${u.name}</b> <span style="font-weight:normal; color:var(--text-muted); margin-left:6px;">(${u.role})</span></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:11px; color:var(--text-muted);">Since ${t}</span><span title="${u.device}">${u.device ? u.device.split(' ')[0] : '💻'}</span></div></div>`; 
+            list.innerHTML += `<div class="online-tag"><div style="display:flex; align-items:center;"><div class="pulse-dot"></div> <b>${u.name || 'User'}</b> <span style="font-weight:normal; color:var(--text-muted); margin-left:6px;">(${u.role || 'viewer'})</span></div><div style="display:flex; align-items:center; gap:8px;"><span style="font-size:11px; color:var(--text-muted);">Since ${t}</span><span title="${u.device || 'Desktop'}">${u.device ? u.device.split(' ')[0] : '💻'}</span></div></div>`; 
           });
         }
         document.getElementById('ana-sessions').textContent = count;
@@ -1266,13 +1321,14 @@
         const list = document.getElementById('activity-log-list'); list.innerHTML = ''; let lCount = 0; let aCount = 0;
         if(s.val()) {
           Object.values(s.val()).reverse().forEach(a => { 
-            lCount++; if(a.action && (a.action.includes('Deleted') || a.action.includes('Wiped') || a.user.includes('Admin'))) aCount++;
+            if(!a) return;
+            lCount++; if((a.action && (a.action.includes('Deleted') || a.action.includes('Wiped') || a.action.includes('Authorized as admin'))) || (a.user && a.user.includes('Admin'))) aCount++;
             const t = new Date(a.time).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'}); 
-            list.innerHTML += `<div class="log-item"><b>${a.user}</b>: ${a.action}<div class="log-time">${t}</div></div>`; 
+            list.innerHTML += `<div class="log-item"><b>${a.user || 'User'}</b>: ${a.action || ''}<div class="log-time">${t}</div></div>`; 
           });
         }
         document.getElementById('ana-logs').textContent = lCount;
-        document.getElementById('ana-admin-logs').textContent = aCount || Math.floor(lCount * 0.15);
+        document.getElementById('ana-admin-logs').textContent = aCount;
       });
     }
 
@@ -1300,16 +1356,49 @@
             document.getElementById('ana-kp').textContent = appState.keyPersons.length;
             let rainDays = 0, matActivity = 0;
             Object.values(appState.dpr).forEach(d => {
+                if (!d) return;
                 if (d.rainStart || (d.weather && d.weather.includes('Rain'))) rainDays++;
                 matActivity += (d.matReceived ? d.matReceived.length : 0) + (d.matConsumed ? d.matConsumed.length : 0);
             });
             document.getElementById('ana-rain').textContent = rainDays; document.getElementById('ana-mat').textContent = matActivity;
+
+            const sD = parseInt(document.getElementById("day-select").value) || 1;
+            const mKey = getAttendanceMonthKey();
+            const currentMonthDays = new Date(parseInt(mKey.split('-')[1]), parseInt(mKey.split('-')[0]), 0).getDate();
+            let pT = 0, totalGross = 0, totalAdv = 0, totalOT = 0;
+            const monthAtt = appState.attendance[mKey] || {};
+            appState.workers.forEach(w => {
+                let wD = 0, wO = 0, wA = 0;
+                if (monthAtt[w.id]) {
+                    if (monthAtt[w.id][sD] && parseDutyInput(monthAtt[w.id][sD].duty) > 0) pT++;
+                    for (let d = 1; d <= currentMonthDays; d++) {
+                        const r = monthAtt[w.id][d];
+                        if (r) {
+                            wD += (parseDutyInput(r.duty) || 0);
+                            wO += (parseFloat(r.ot) || 0);
+                            wA += (parseFloat(r.adv) || 0);
+                        }
+                    }
+                }
+                const rate = parseFloat(w.rate) || 0;
+                const gross = (wD * rate) + (wO * (rate / 8));
+                const adv = (parseFloat(appState.advances[w.id]) || 0) + wA;
+                totalGross += gross;
+                totalAdv += adv;
+                totalOT += wO;
+            });
+            const attendRate = appState.workers.length > 0 ? Math.round((pT / appState.workers.length) * 100) : 0;
+            document.getElementById('ana-attend-rate').textContent = `${attendRate}%`;
+            document.getElementById('ana-gross').textContent = `₹${Math.round(totalGross).toLocaleString('en-IN')}`;
+            document.getElementById('ana-adv').textContent = `₹${Math.round(totalAdv).toLocaleString('en-IN')}`;
+            document.getElementById('ana-ot').textContent = `${totalOT.toFixed(1)}h`;
+            document.getElementById('ana-net').textContent = `₹${Math.round(totalGross - totalAdv).toLocaleString('en-IN')}`;
         } catch(e) {}
     }
 
     function toggleAuth() { 
       if (userRole !== 'viewer') { 
-        userRole = 'viewer'; localStorage.removeItem('gi_role'); 
+        userRole = 'viewer'; safeRemoveStorage('gi_role'); 
         updateAuthUI(); renderAll(); showToast("Locked Mode Active"); logActivity("Locked portal access"); 
       } else { 
         document.getElementById('login-overlay').style.display = 'flex'; 
@@ -1328,26 +1417,32 @@
       else if (pwd === '5566') { userRole = 'supervisor'; showToast("Supervisor Mode Unlocked"); }
       else { document.getElementById('pwd-error').style.display = 'block'; return; }
       
-      localStorage.setItem('gi_role', userRole); 
+      safeSetStorage('gi_role', userRole); 
       closeLoginModal(); updateAuthUI(); renderAll(); initPresence(); 
       logActivity(`Authorized as ${userRole}`);
     }
     
     function updateAuthUI() {
       const btn = document.getElementById('auth-status-btn'), edits = document.getElementById('edit-controls'), clrGrp = document.getElementById('btn-clear-group');
-      const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      const addWorkerBtn = document.getElementById('btn-add-worker'), addKpBtn = document.getElementById('btn-add-kp');
 
       if (userRole === 'admin') { 
         btn.innerHTML='🛡️ Admin'; btn.style.background='var(--danger)'; btn.classList.remove("shake-error");
-        edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='inline-flex';
-        clrGrp.style.display = 'inline-flex';
+        edits.style.display = 'flex';
+        addWorkerBtn.style.display = isMasterRollup ? 'none' : 'inline-flex';
+        addKpBtn.style.display = 'inline-flex';
+        clrGrp.style.display = isMasterRollup ? 'none' : 'inline-flex';
       } else if (userRole === 'incharge') {
         btn.innerHTML='🔑 Incharge'; btn.style.background='var(--warning)'; btn.classList.remove("shake-error");
-        edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='none';
+        edits.style.display = isMasterRollup ? 'none' : 'flex';
+        addWorkerBtn.style.display = 'inline-flex';
+        addKpBtn.style.display = 'none';
         clrGrp.style.display = 'none';
       } else if (userRole === 'supervisor') {
         btn.innerHTML='👷 Supervisor'; btn.style.background='var(--secondary)'; btn.classList.remove("shake-error");
-        edits.style.display='flex'; document.getElementById('btn-add-worker').style.display='inline-flex'; document.getElementById('btn-add-kp').style.display='none';
+        edits.style.display = isMasterRollup ? 'none' : 'flex';
+        addWorkerBtn.style.display = 'inline-flex';
+        addKpBtn.style.display = 'none';
         clrGrp.style.display = 'none';
       } else { 
         btn.innerHTML='🔒 View Only'; btn.style.background='rgba(255,255,255,0.2)'; edits.style.display='none';
@@ -1362,7 +1457,7 @@
         const btn = document.getElementById('auth-status-btn'); 
         btn.classList.remove("shake-error"); void btn.offsetWidth; btn.classList.add("shake-error"); 
         showToast(isMasterRollup ? "Switch to a specific group to edit." : "Enter PIN to make edits."); 
-        if(!isMasterRollup) setTimeout(() => { document.getElementById('login-overlay').style.display = 'flex'; }, 400); 
+        if(!isMasterRollup && !canManage) setTimeout(() => { document.getElementById('login-overlay').style.display = 'flex'; }, 400); 
       } 
     };
 
@@ -1376,7 +1471,7 @@
 
     function loadLocalState() {
       if(isMasterRollup) return; 
-      const saved = localStorage.getItem(getStorageKey());
+      const saved = safeGetStorage(getStorageKey());
       appState = sanitizeState(saved ? JSON.parse(saved) : null);
     }
     
@@ -1387,6 +1482,7 @@
       if (isMasterRollup) {
         currentSiteRef = db.ref(`data/${currentSite}`);
         currentSiteRef.on('value', (s) => {
+          if(isSavingToCloud) return;
           const allGroups = s.val();
           let aggregated = { workers: [], keyPersons: [], attendance: {}, kpAttendance: {}, advances: {}, dpr: {}, timeline: {} };
           if(allGroups) {
@@ -1398,14 +1494,21 @@
                 if(!aggregated.attendance[month]) aggregated.attendance[month] = {};
                 Object.assign(aggregated.attendance[month], wData);
               });
-              if(group.kpAttendance) Object.assign(aggregated.kpAttendance, group.kpAttendance);
+              if(group.kpAttendance) {
+                Object.entries(group.kpAttendance).forEach(([k, v]) => {
+                  if (v && typeof v === 'object') {
+                    if (!aggregated.kpAttendance[k]) aggregated.kpAttendance[k] = {};
+                    Object.assign(aggregated.kpAttendance[k], v);
+                  }
+                });
+              }
               if(group.advances) Object.assign(aggregated.advances, group.advances);
               if(group.timeline) Object.entries(group.timeline).forEach(([date, tArray]) => {
                 if(!aggregated.timeline[date]) aggregated.timeline[date] = [];
                 aggregated.timeline[date].push(...Object.values(tArray));
               });
               if(group.dpr) Object.entries(group.dpr).forEach(([date, dData]) => {
-                if(!aggregated.dpr[date]) aggregated.dpr[date] = { work: "", matReceived: [], matConsumed: [], photos: [] };
+                if(!aggregated.dpr[date]) aggregated.dpr[date] = { work: "", weather: dData.weather || "☀️ Sunny / Clear", rainStart: dData.rainStart || "", rainEnd: dData.rainEnd || "", workStop: dData.workStop || "No", matReceived: [], matConsumed: [], photos: [] };
                 if(dData.work) aggregated.dpr[date].work += (aggregated.dpr[date].work ? "\n---\n" : "") + dData.work;
                 if(dData.matReceived) aggregated.dpr[date].matReceived.push(...Object.values(dData.matReceived));
                 if(dData.matConsumed) aggregated.dpr[date].matConsumed.push(...Object.values(dData.matConsumed));
@@ -1414,7 +1517,7 @@
             });
           }
           const uniqueKpIds = [];
-          aggregated.keyPersons = aggregated.keyPersons.filter(kp => { if(uniqueKpIds.includes(kp.id)) return false; uniqueKpIds.push(kp.id); return true; });
+          aggregated.keyPersons = aggregated.keyPersons.filter(kp => { if(!kp || uniqueKpIds.includes(String(kp.id))) return false; uniqueKpIds.push(String(kp.id)); return true; });
           Object.keys(aggregated.timeline).forEach(date => { aggregated.timeline[date].sort((a,b) => a.timestamp - b.timestamp); });
           appState = sanitizeState(aggregated);
           if(!isUserTyping()) renderAll();
@@ -1430,26 +1533,31 @@
            if(JSON.stringify(appState) !== JSON.stringify(sanitizeState(newData))) { pendingCloudState = newData; document.getElementById('conflict-overlay').style.display = 'flex'; return; }
         }
         appState = sanitizeState(newData); 
-        
-        try {
-            localStorage.setItem(getStorageKey(), JSON.stringify(appState)); 
-        } catch (e) {
-            console.warn("LocalStorage Quota Exceeded. Relying on Cloud sync.");
-        }
-        
+        safeSetStorage(getStorageKey(), JSON.stringify(appState));
         if(!isUserTyping()) { renderAll(); }
       });
     }
 
-    function saveState() {
-      if (!currentSite || !currentSubgroup || isMasterRollup) return; 
+    function saveKeyPersonnelState() {
+      if (!currentSite) return;
       appState = sanitizeState(appState);
-      
-      try {
-          localStorage.setItem(getStorageKey(), JSON.stringify(appState));
-      } catch (e) {
-          console.warn("LocalStorage Quota Exceeded during save. Sending directly to Cloud.");
+      const targetGroup = (!isMasterRollup && currentSubgroup) ? currentSubgroup : '_site_officials';
+      isSavingToCloud = true;
+      Promise.all([
+        db.ref(`data/${currentSite}/${targetGroup}/keyPersons`).set(appState.keyPersons),
+        db.ref(`data/${currentSite}/${targetGroup}/kpAttendance`).set(appState.kpAttendance)
+      ]).then(() => { isSavingToCloud = false; });
+      totalSyncs++; updateDashboard(); updateAdvancedAnalytics();
+    }
+
+    function saveState() {
+      if (!currentSite || !currentSubgroup) return;
+      if (isMasterRollup) {
+        saveKeyPersonnelState();
+        return;
       }
+      appState = sanitizeState(appState);
+      safeSetStorage(getStorageKey(), JSON.stringify(appState));
 
       isSavingToCloud = true;
       db.ref(`data/${currentSite}/${currentSubgroup}`).set(appState).then(() => { isSavingToCloud = false; });
@@ -1461,11 +1569,24 @@
     function wipeZoneData() {
       const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
       if(!canManage || isMasterRollup) return;
-      if(confirm("DANGER: Wipe all data in this group?")) { appState = sanitizeState(null); saveState(); logActivity(`Wiped all data in ${currentSubgroup}`); showToast("Data Cleared"); }
+      showConfirmModal("DANGER: Wipe all data in this group?", () => {
+        appState = sanitizeState(null); saveState(); renderAll(); logActivity(`Wiped all data in ${currentSubgroup}`); showToast("Data Cleared");
+      }, "⚠️ Wipe Group Data");
     }
 
     function toggleDropdown() { document.getElementById('site-dropdown').classList.toggle('active'); }
-    function loadSitesFromCloud() { db.ref('global/structure').on('value', (snap) => { siteStructure = sanitizeStructure(snap.val()); renderSiteDropdown(); }); }
+    function loadSitesFromCloud() {
+      db.ref('global/structure').on('value', (snap) => {
+        siteStructure = sanitizeStructure(snap.val());
+        if (siteStructure.length > 0 && (!currentSite || !siteStructure.some(s => s.id === currentSite))) {
+          const firstSite = siteStructure[0];
+          const firstSub = (firstSite.subgroups && firstSite.subgroups.length > 0) ? firstSite.subgroups[0] : null;
+          selectSiteSubgroup(firstSite.id, firstSub ? firstSub.id : 'ALL_GROUPS', firstSite.name, firstSub ? firstSub.name : 'Master Roll-Up');
+        } else {
+          renderSiteDropdown();
+        }
+      });
+    }
 
     function renderSiteDropdown() {
       const dd = document.getElementById('site-dropdown'); dd.innerHTML = '';
@@ -1503,18 +1624,19 @@
     }
 
     function selectSiteSubgroup(sId, subId, sName, subName) {
-      currentSite = sId; currentSubgroup = subId; localStorage.setItem('gi_last_site', sId); localStorage.setItem('gi_last_sub', subId);
+      currentSite = sId; currentSubgroup = subId; safeSetStorage('gi_last_site', sId); safeSetStorage('gi_last_sub', subId);
       isMasterRollup = (subId === 'ALL_GROUPS');
       
       if (isMasterRollup) {
          document.getElementById('selected-site-label').textContent = `🏢 ${sName} ➔ 🌍 Master Roll-Up`;
          document.querySelectorAll('[id^="rollup-alert-"]').forEach(el => el.style.display = 'block');
-         document.getElementById('kp-master-header').style.display = 'block'; document.getElementById('edit-controls').style.display = 'none'; 
+         document.getElementById('kp-master-header').style.display = 'block';
       } else {
          document.getElementById('selected-site-label').textContent = `🏢 ${sName} ➔ 📍 ${subName}`;
          document.querySelectorAll('[id^="rollup-alert-"]').forEach(el => el.style.display = 'none');
-         document.getElementById('kp-master-header').style.display = 'none'; if (userRole !== 'viewer') updateAuthUI(); 
+         document.getElementById('kp-master-header').style.display = 'none';
       }
+      updateAuthUI();
       document.getElementById('site-dropdown').classList.remove('active'); loadLocalState(); syncSiteDataFirebase(); 
     }
 
@@ -1525,17 +1647,44 @@
       document.getElementById('site-manager-modal').style.display = 'flex'; document.getElementById('sm-action-type').value = type; smTempSiteId = siteId; document.getElementById('sm-input').value = '';
       if(type === 'site') { document.getElementById('sm-title').textContent = "Create New Site"; document.getElementById('sm-desc').textContent = "A Site represents a major geographical project location."; } 
       else if (type === 'group') { document.getElementById('sm-title').textContent = "Create New Group"; } 
-      else if (type === 'rename') { document.getElementById('sm-title').textContent = "Rename Group"; const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); const sub = site.subgroups.find(s => s.id === contextTargetId); document.getElementById('sm-input').value = sub.name; }
-      else if (type === 'rename_site') { document.getElementById('sm-title').textContent = "Rename Site"; const site = siteStructure.find(s => s.id === contextTargetId); document.getElementById('sm-input').value = site.name; }
+      else if (type === 'rename') { document.getElementById('sm-title').textContent = "Rename Group"; const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); if(site) { const sub = site.subgroups.find(s => s.id === contextTargetId); if(sub) document.getElementById('sm-input').value = sub.name; } }
+      else if (type === 'rename_site') { document.getElementById('sm-title').textContent = "Rename Site"; const site = siteStructure.find(s => s.id === contextTargetId); if(site) document.getElementById('sm-input').value = site.name; }
     }
 
     function executeSiteManager() {
       const type = document.getElementById('sm-action-type').value; const val = document.getElementById('sm-input').value.trim();
-      if(!val) return alert("Name cannot be empty.");
-      if(type === 'site') { const id = 'site_' + Date.now(); siteStructure.push({ id, name: val, subgroups: [] }); logActivity(`Created new site: ${val}`); } 
-      else if(type === 'group') { const site = siteStructure.find(s => s.id === smTempSiteId); if(!site.subgroups) site.subgroups = []; const newSubId = 'sub_'+Date.now(); site.subgroups.push({ id: newSubId, name: val }); logActivity(`Added group ${val}`); if (!currentSite || !currentSubgroup) selectSiteSubgroup(site.id, newSubId, site.name, val); } 
-      else if(type === 'rename') { const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); const sub = site.subgroups.find(s => s.id === contextTargetId); sub.name = val; logActivity(`Renamed group to ${val}`); if(currentSubgroup === contextTargetId) document.getElementById('selected-site-label').textContent = `🏢 ${site.name} ➔ 📍 ${val}`; }
-      else if(type === 'rename_site') { const site = siteStructure.find(s => s.id === contextTargetId); site.name = val; logActivity(`Renamed site to ${val}`); }
+      if(!val) { showToast("Name cannot be empty."); return; }
+      if(type === 'site') {
+        const id = 'site_' + Date.now();
+        siteStructure.push({ id, name: val, subgroups: [] });
+        logActivity(`Created new site: ${val}`);
+        if (!currentSite) selectSiteSubgroup(id, 'ALL_GROUPS', val, 'Master Roll-Up');
+      } 
+      else if(type === 'group') {
+        const site = siteStructure.find(s => s.id === smTempSiteId);
+        if(!site) return;
+        if(!site.subgroups) site.subgroups = [];
+        const newSubId = 'sub_'+Date.now();
+        site.subgroups.push({ id: newSubId, name: val });
+        logActivity(`Added group ${val}`);
+        if (!currentSite || !currentSubgroup || currentSubgroup === 'ALL_GROUPS') selectSiteSubgroup(site.id, newSubId, site.name, val);
+      } 
+      else if(type === 'rename') {
+        const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId));
+        if(site) {
+          const sub = site.subgroups.find(s => s.id === contextTargetId);
+          if(sub) sub.name = val;
+          logActivity(`Renamed group to ${val}`);
+          if(currentSubgroup === contextTargetId) document.getElementById('selected-site-label').textContent = `🏢 ${site.name} ➔ 📍 ${val}`;
+        }
+      }
+      else if(type === 'rename_site') {
+        const site = siteStructure.find(s => s.id === contextTargetId);
+        if(site) {
+          site.name = val;
+          logActivity(`Renamed site to ${val}`);
+        }
+      }
       db.ref('global/structure').set(siteStructure); closeModal('site-manager-modal');
     }
 
@@ -1544,31 +1693,32 @@
     
     function triggerDelete(subId) { 
       document.getElementById('site-dropdown').classList.remove('active'); contextTargetId = subId; 
-      if(confirm("Delete this group permanently?")) { 
+      showConfirmModal("Delete this group permanently?", () => {
         const site = siteStructure.find(s => s.subgroups && s.subgroups.some(sub => sub.id === contextTargetId)); 
+        if (!site) return;
         site.subgroups = site.subgroups.filter(s => s.id !== contextTargetId); 
         db.ref('global/structure').set(siteStructure); db.ref(`data/${site.id}/${contextTargetId}`).remove(); logActivity(`Deleted a group`); 
         if (contextTargetId === currentSubgroup) {
           const fallbackSub = (site.subgroups && site.subgroups.length > 0) ? site.subgroups[0].id : 'ALL_GROUPS';
           if(fallbackSub !== 'ALL_GROUPS') selectSiteSubgroup(site.id, fallbackSub, site.name, site.subgroups[0].name);
-          else { currentSubgroup = 'ALL_GROUPS'; renderSiteDropdown(); syncSiteDataFirebase(); }
+          else selectSiteSubgroup(site.id, 'ALL_GROUPS', site.name, 'Master Roll-Up');
         }
-      } 
+      }, "🗑️ Delete Group");
     }
     
     function triggerDeleteSite(siteId) {
       document.getElementById('site-dropdown').classList.remove('active'); 
-      if(confirm("DANGER: Are you sure you want to completely delete this ENTIRE SITE?")) { 
+      showConfirmModal("DANGER: Are you sure you want to completely delete this ENTIRE SITE?", () => {
         siteStructure = siteStructure.filter(s => s.id !== siteId); db.ref('global/structure').set(siteStructure); db.ref(`data/${siteId}`).remove(); logActivity(`Deleted a main site`); 
         if (currentSite === siteId) {
           const fallbackSite = siteStructure.length > 0 ? siteStructure[0] : null;
           if (fallbackSite) {
             const fallbackSub = (fallbackSite.subgroups && fallbackSite.subgroups.length > 0) ? fallbackSite.subgroups[0] : null;
             if (fallbackSub) selectSiteSubgroup(fallbackSite.id, fallbackSub.id, fallbackSite.name, fallbackSub.name);
-            else { currentSite = fallbackSite.id; currentSubgroup = 'ALL_GROUPS'; renderSiteDropdown(); syncSiteDataFirebase(); }
+            else selectSiteSubgroup(fallbackSite.id, 'ALL_GROUPS', fallbackSite.name, 'Master Roll-Up');
           } else { currentSite = null; currentSubgroup = null; document.getElementById('selected-site-label').textContent = '⚠️ Database Empty'; renderSiteDropdown(); syncSiteDataFirebase(); }
         } else renderSiteDropdown(); 
-      }
+      }, "⚠️ Delete Entire Site");
     }
 
     function generateMonthOptions() { 
@@ -1606,7 +1756,7 @@
       }
     }
     
-    function renderAll() { renderDailyView(); renderKeyPersonView(); renderDPRView(); renderNotesView(); renderMonthlyTable(); renderWorkerManagement(); populateSlipWorkerSelect(); updateDashboard(); }
+    function renderAll() { renderDailyView(); renderKeyPersonView(); renderDPRView(); renderNotesView(); renderMonthlyTable(); renderWorkerManagement(); populateSlipWorkerSelect(); updateDashboard(); updateAdvancedAnalytics(); }
 
     function getInitials(name) { const n = (name||"").trim().split(" "); return n.length > 1 ? (n[0][0]+n[1][0]).toUpperCase() : (n[0] ? n[0][0].toUpperCase() : 'U'); }
     function getAttendanceMonthKey() { const monthSelect = document.getElementById("month-select"); return monthSelect ? monthSelect.value : `${new Date().getMonth()+1}-${new Date().getFullYear()}`; }
@@ -1614,7 +1764,21 @@
     function getWorkerAttendanceRecord(wId, sDay) {
       const mKey = getAttendanceMonthKey();
       if (!appState.attendance) appState.attendance = {}; if (!appState.attendance[mKey]) appState.attendance[mKey] = {}; if (!appState.attendance[mKey][wId]) appState.attendance[mKey][wId] = {};
-      return appState.attendance[mKey][wId][sDay] || { duty: null, ot: 0, adv: 0, locked: false, graceChances: 2 };
+      const rec = appState.attendance[mKey][wId][sDay] || { duty: null, ot: 0, adv: 0, locked: false, graceChances: 2 };
+      if (typeof rec.graceChances !== 'number') rec.graceChances = 2;
+      return rec;
+    }
+
+    function getKpAttendanceRecord(wId, sDay) {
+      const mKey = getAttendanceMonthKey();
+      if (!appState.kpAttendance) appState.kpAttendance = {};
+      if (appState.kpAttendance[mKey] && appState.kpAttendance[mKey][wId] && appState.kpAttendance[mKey][wId][sDay]) {
+        return appState.kpAttendance[mKey][wId][sDay];
+      }
+      if (appState.kpAttendance[wId] && appState.kpAttendance[wId][sDay] && typeof appState.kpAttendance[wId][sDay].duty !== 'undefined') {
+        return appState.kpAttendance[wId][sDay];
+      }
+      return { duty: null, locked: false };
     }
 
     function checkAttendanceEditable(sDay) {
@@ -1631,6 +1795,14 @@
       return false; 
     }
 
+    function isWorkerDayLocked(wId, sDay) {
+      if (isMasterRollup || userRole === 'viewer') return true;
+      if (userRole === 'admin') return false;
+      if (checkAttendanceEditable(sDay)) return false;
+      const a = getWorkerAttendanceRecord(wId, sDay);
+      return a.graceChances <= 0;
+    }
+
     function renderDailyView() {
       const sDay = parseInt(document.getElementById("day-select").value);
       const query = (document.getElementById("worker-search-input") ? document.getElementById("worker-search-input").value.toLowerCase().trim() : "");
@@ -1645,18 +1817,7 @@
 
       filteredWorkers.forEach((w, i) => {
         const a = getWorkerAttendanceRecord(w.id, sDay);
-        const isEditableToday = checkAttendanceEditable(sDay);
-        let isLocked = false;
-        
-        if (isMasterRollup) {
-            isLocked = true;
-        } else if (userRole === 'admin') {
-            isLocked = false;
-        } else if (!isEditableToday) {
-            if (a.graceChances <= 0) {
-                isLocked = true;
-            }
-        }
+        const isLocked = isWorkerDayLocked(w.id, sDay);
 
         const lockUI = isLocked ? 'locked' : ''; const disInput = isLocked ? 'disabled' : '';
         const evP = isLocked ? `showToast('Record Locked (Past Day / Grace exhausted).')` : `setDailyDuty('${w.id}', ${sDay}, 1, 'worker')`;
@@ -1696,7 +1857,7 @@
 
       let htmlBuffer = "";
       appState.keyPersons.forEach((w, i) => {
-        const a = (appState.kpAttendance[w.id] && appState.kpAttendance[w.id][sDay]) || { duty: null, locked: false };
+        const a = getKpAttendanceRecord(w.id, sDay);
         const isLocked = userRole === 'viewer'; 
         const lockUI = isLocked ? 'locked' : '';
         const evP = isLocked ? `requireAuthClick(this)` : `setDailyDuty('${w.id}', ${sDay}, 1, 'kp')`;
@@ -1740,15 +1901,19 @@
 
     window.setDailyDuty = function(wId, d, v, type) { 
       if(userRole === 'viewer' || (isMasterRollup && type !== 'kp')) return; 
+      const mKey = getAttendanceMonthKey();
       if (type === 'kp') {
-        if(!appState.kpAttendance[wId]) appState.kpAttendance[wId] = {};
-        appState.kpAttendance[wId][d] = { duty: v, locked: (userRole === 'incharge' || userRole === 'supervisor') };
+        if(!appState.kpAttendance[mKey]) appState.kpAttendance[mKey] = {};
+        if(!appState.kpAttendance[mKey][wId]) appState.kpAttendance[mKey][wId] = {};
+        appState.kpAttendance[mKey][wId][d] = { duty: v, locked: (userRole === 'incharge' || userRole === 'supervisor') };
+        saveKeyPersonnelState();
+        renderKeyPersonView();
+        return;
       } else {
-        const mKey = getAttendanceMonthKey();
         if(!appState.attendance[mKey]) appState.attendance[mKey] = {};
         if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId] = {};
         
-        let existing = appState.attendance[mKey][wId][d] || { ot: 0, adv: 0, graceChances: 2 };
+        let existing = getWorkerAttendanceRecord(wId, d);
         const isEditableToday = checkAttendanceEditable(d);
         
         if (!isEditableToday && userRole !== 'admin') {
@@ -1761,11 +1926,27 @@
         
         appState.attendance[mKey][wId][d] = { ...existing, duty: v, locked: false };
       }
-      saveState(); if(type==='kp') renderKeyPersonView(); else { renderDailyView(); renderMonthlyTable(); }
+      saveState(); renderDailyView(); renderMonthlyTable(); renderWageSlip();
     };
     
-    window.setDailyOT = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:null,adv:0,locked:false,graceChances:2}), ot: parseFloat(v)||0 }; saveState(); };
-    window.setDailyAdv = function(wId, d, v) { if(userRole === 'viewer' || isMasterRollup) return; const mKey = getAttendanceMonthKey(); if(!appState.attendance[mKey]) appState.attendance[mKey]={}; if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={}; appState.attendance[mKey][wId][d] = { ...(appState.attendance[mKey][wId][d]||{duty:null,ot:0,locked:false,graceChances:2}), adv: parseFloat(v)||0 }; saveState(); };
+    window.setDailyOT = function(wId, d, v) {
+      if(isWorkerDayLocked(wId, d)) return;
+      const mKey = getAttendanceMonthKey();
+      if(!appState.attendance[mKey]) appState.attendance[mKey]={};
+      if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={};
+      const existing = getWorkerAttendanceRecord(wId, d);
+      appState.attendance[mKey][wId][d] = { ...existing, ot: parseFloat(v)||0 };
+      saveState(); renderMonthlyTable(); renderWageSlip();
+    };
+    window.setDailyAdv = function(wId, d, v) {
+      if(isWorkerDayLocked(wId, d)) return;
+      const mKey = getAttendanceMonthKey();
+      if(!appState.attendance[mKey]) appState.attendance[mKey]={};
+      if(!appState.attendance[mKey][wId]) appState.attendance[mKey][wId]={};
+      const existing = getWorkerAttendanceRecord(wId, d);
+      appState.attendance[mKey][wId][d] = { ...existing, adv: parseFloat(v)||0 };
+      saveState(); renderMonthlyTable(); renderWorkerManagement(); renderWageSlip();
+    };
 
     function markAllWorkersPresent() {
       if(userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; }
@@ -1777,7 +1958,7 @@
       
       appState.workers.forEach(w => {
         if(!appState.attendance[mKey][w.id]) appState.attendance[mKey][w.id] = {};
-        const existing = appState.attendance[mKey][w.id][sDay] || { ot: 0, adv: 0, graceChances: 2 };
+        const existing = getWorkerAttendanceRecord(w.id, sDay);
         
         if (!isEditableToday && userRole !== 'admin' && existing.graceChances <= 0) return; 
         if (!isEditableToday && userRole !== 'admin') existing.graceChances--;
@@ -1789,6 +1970,7 @@
 
     // AI VOICE DICTATION INTEGRATION
     function startDictation() {
+      if (userRole === 'viewer' || isMasterRollup) { requireAuthClick(); return; }
       if (!window.webkitSpeechRecognition && !window.SpeechRecognition) {
         showToast("Speech Recognition is not supported in your browser.");
         return;
@@ -1832,8 +2014,14 @@
 
     // FIREBASE STORAGE PHOTO UPLOAD (PROJECT B)
     function handlePhotoUpload(event) {
+      if (userRole === 'viewer' || isMasterRollup) {
+        requireAuthClick();
+        event.target.value = '';
+        return;
+      }
       if (!currentSite || !currentSubgroup) {
         showToast("Please select a valid site and group first.");
+        event.target.value = '';
         return;
       }
 
@@ -1873,7 +2061,7 @@
           
           // 3. Save the download link in the Main Database (Project A)
           const dk = getSelectedDateKey();
-          if(!appState.dpr[dk]) appState.dpr[dk] = {};
+          if(!appState.dpr[dk]) appState.dpr[dk] = { work: "", weather: "☀️ Sunny / Clear", rainStart: "", rainEnd: "", workStop: "No", matReceived: [], matConsumed: [], photos: [] };
           if(!appState.dpr[dk].photos) appState.dpr[dk].photos = [];
           
           appState.dpr[dk].photos.push(downloadURL);
@@ -1885,14 +2073,16 @@
       });
     }
 
-    function checkWeatherCondition() { const w = document.getElementById("dpr-weather-select").value; document.getElementById("rain-settings").style.display = w.includes('Rain') ? "flex" : "none"; autoSaveDPR(); }
+    function checkWeatherCondition() { const w = document.getElementById("dpr-weather-select").value || ""; document.getElementById("rain-settings").style.display = w.includes('Rain') ? "flex" : "none"; autoSaveDPR(); }
 
     function renderDPRView() {
       const dk = getSelectedDateKey(); 
       const d = appState.dpr[dk] || { work: "", weather: "☀️ Sunny / Clear", rainStart: "", rainEnd: "", workStop: "No", matReceived: [], matConsumed: [], photos: [] };
       document.getElementById("dpr-work-text").value = d.work || ""; document.getElementById("dpr-weather-select").value = d.weather || "☀️ Sunny / Clear"; 
       document.getElementById("dpr-rain-start").value = d.rainStart || ""; document.getElementById("dpr-rain-end").value = d.rainEnd || ""; 
-      document.getElementById("dpr-work-stopped").value = d.workStop || "No"; checkWeatherCondition(); 
+      document.getElementById("dpr-work-stopped").value = d.workStop || "No";
+      const wVal = document.getElementById("dpr-weather-select").value || "";
+      document.getElementById("rain-settings").style.display = wVal.includes('Rain') ? "flex" : "none";
 
       // Render Existing Photos
       const previewContainer = document.getElementById("dpr-photo-preview");
@@ -1941,13 +2131,14 @@
     function calculateLiveStock() {
       const stockMap = {};
       Object.values(appState.dpr).forEach(d => {
+        if(!d) return;
         if(d.matReceived) d.matReceived.forEach(m => { const n = (m.item||"").trim().toLowerCase(); if(n) stockMap[n] = (stockMap[n]||0) + (parseFloat(m.qty)||0); });
         if(d.matConsumed) d.matConsumed.forEach(m => { const n = (m.item||"").trim().toLowerCase(); if(n) stockMap[n] = (stockMap[n]||0) - (parseFloat(m.qty)||0); });
       });
       const stockContainer = document.getElementById("live-stock-summary"); stockContainer.innerHTML = "";
       const keys = Object.keys(stockMap);
       if(keys.length === 0) { stockContainer.innerHTML = `<span style="color:var(--text-muted); font-size:13px; font-style:italic;">No material movement logged yet.</span>`; return; }
-      keys.forEach(k => { stockContainer.innerHTML += `<div class="stock-badge">📦 ${k.toUpperCase()}: ${stockMap[k]}</div>`; });
+      keys.forEach(k => { stockContainer.innerHTML += `<div class="stock-badge ${stockMap[k] < 0 ? 'low-stock' : ''}">📦 ${k.toUpperCase()}: ${stockMap[k]}</div>`; });
     }
 
     function autoSaveDPR() {
@@ -1964,7 +2155,7 @@
         
         appState.dpr[dk] = { 
             work: document.getElementById("dpr-work-text").value, 
-            weather: document.getElementById("dpr-weather-select").value, 
+            weather: document.getElementById("dpr-weather-select").value || "☀️ Sunny / Clear", 
             rainStart: document.getElementById("dpr-rain-start").value, 
             rainEnd: document.getElementById("dpr-rain-end").value, 
             workStop: document.getElementById("dpr-work-stopped").value, 
@@ -1977,15 +2168,16 @@
     }
 
     function shareDPRWhatsApp() {
-        const dk = getSelectedDateKey(); const d = appState.dpr[dk];
-        if(!d) { showToast("No DPR data for today."); return; }
+        const dk = getSelectedDateKey();
+        const d = appState.dpr[dk] || { work: document.getElementById("dpr-work-text").value || "", weather: document.getElementById("dpr-weather-select").value || "☀️ Sunny / Clear", rainStart: "", rainEnd: "", workStop: "No", matReceived: [], matConsumed: [] };
+        const weatherStr = d.weather || "☀️ Sunny / Clear";
         let tPresent = 0, tAbsent = 0; const sDay = parseInt(document.getElementById("day-select").value) || 1;
         const tradeCounts = {};
-        appState.workers.forEach(w => { const rec = getWorkerAttendanceRecord(w.id, sDay); if(rec.duty > 0) { tPresent++; tradeCounts[w.desig] = (tradeCounts[w.desig] || 0) + 1; } else { tAbsent++; } });
-        let text = `*🚧 GLOBAL INDUSTRIES - SITE REPORT*\n*Date:* ${dk}\n*Weather:* ${d.weather}\n\n*👥 WORKFORCE SUMMARY*\nTotal Registered: ${appState.workers.length}\nPresent: ${tPresent}\nAbsent: ${tAbsent}\n`;
+        appState.workers.forEach(w => { const rec = getWorkerAttendanceRecord(w.id, sDay); if((parseDutyInput(rec.duty) || 0) > 0) { tPresent++; tradeCounts[w.desig] = (tradeCounts[w.desig] || 0) + 1; } else { tAbsent++; } });
+        let text = `*🚧 GLOBAL INDUSTRIES - SITE REPORT*\n*Date:* ${dk}\n*Weather:* ${weatherStr}\n\n*👥 WORKFORCE SUMMARY*\nTotal Registered: ${appState.workers.length}\nPresent: ${tPresent}\nAbsent: ${tAbsent}\n`;
         if(Object.keys(tradeCounts).length > 0) { text += `\n*Trade Breakdown:*\n`; Object.keys(tradeCounts).forEach(trade => text += `- ${trade}: ${tradeCounts[trade]}\n`); }
         text += `\n*📝 WORK DETAILS*\n${d.work || "No work details provided"}\n\n`;
-        if (d.rainStart || d.rainEnd || d.weather.includes('Rain')) { text += `*🌧️ Rain Window:* ${d.rainStart || "N/A"} to ${d.rainEnd || "N/A"}\n*🛑 Work Stopped:* ${d.workStop}\n\n`; }
+        if (d.rainStart || d.rainEnd || weatherStr.includes('Rain')) { text += `*🌧️ Rain Window:* ${d.rainStart || "N/A"} to ${d.rainEnd || "N/A"}\n*🛑 Work Stopped:* ${d.workStop || "No"}\n\n`; }
         text += `*📥 MATERIALS RECEIVED:*\n`;
         if(!d.matReceived || d.matReceived.length === 0) text += `- None\n`; else d.matReceived.forEach(m => text += `- ${m.item}: ${m.qty} ${m.unit}\n`);
         text += `\n*📤 MATERIALS CONSUMED:*\n`;
@@ -2061,15 +2253,15 @@
         return new Date(y, m - 1, d);
     }
 
-    let lastReportData = null;
+    let lastReportByType = { single: null, range: null };
     function generateReport(type) {
-        if (!currentSite) return alert("Select a site first.");
+        if (!currentSite) { showToast("Select a site first."); return; }
         
         let startDate, endDate, startDateStr, endDateStr, resDiv;
         
         if (type === 'single') {
             startDateStr = document.getElementById('single-report-date').value;
-            if (!startDateStr) return alert("Please select a date.");
+            if (!startDateStr) { showToast("Please select a date."); return; }
             startDate = getLocalDate(startDateStr);
             endDate = getLocalDate(startDateStr);
             resDiv = document.getElementById('single-report-results');
@@ -2078,10 +2270,10 @@
         } else {
             startDateStr = document.getElementById('report-start-date').value;
             endDateStr = document.getElementById('report-end-date').value;
-            if (!startDateStr || !endDateStr) return alert("Please select valid From and To dates.");
+            if (!startDateStr || !endDateStr) { showToast("Please select valid From and To dates."); return; }
             startDate = getLocalDate(startDateStr);
             endDate = getLocalDate(endDateStr);
-            if (startDate > endDate) return alert("From Date must be before To Date.");
+            if (startDate > endDate) { showToast("From Date must be before To Date."); return; }
             resDiv = document.getElementById('report-results');
             document.getElementById('btn-rep-excel').style.display = 'none';
             document.getElementById('btn-rep-pdf').style.display = 'none';
@@ -2104,19 +2296,20 @@
                 if (!group) return;
                 
                 if (group.attendance && group.workers) {
-                    const workersObj = Array.isArray(group.workers) ? group.workers : Object.values(group.workers);
+                    const workersObj = Array.isArray(group.workers) ? group.workers.filter(Boolean) : Object.values(group.workers).filter(Boolean);
                     Object.entries(group.attendance).forEach(([monthKey, wData]) => {
                         const [m, y] = monthKey.split('-');
-                        Object.entries(wData).forEach(([wId, days]) => {
+                        Object.entries(wData || {}).forEach(([wId, days]) => {
                             const worker = workersObj.find(w => String(w.id) === String(wId));
                             if(!worker) return;
                             const rate = parseFloat(worker.rate) || 0;
                             
                             if(!itemizedPresence[wId]) {
-                                itemizedPresence[wId] = { name: worker.name, desig: worker.desig, rate: rate, daysPresent: 0, totalOT: 0, netEarned: 0 };
+                                itemizedPresence[wId] = { name: worker.name, desig: worker.desig, rate: rate, daysPresent: 0, totalOT: 0, grossEarned: 0, totalAdv: 0, netEarned: 0 };
                             }
 
-                            Object.entries(days).forEach(([day, r]) => {
+                            Object.entries(days || {}).forEach(([day, r]) => {
+                                if (!r) return;
                                 const recordDate = new Date(y, m - 1, day);
                                 if (recordDate >= startDate && recordDate <= endDate) {
                                     const dutyNumeric = parseDutyInput(r.duty);
@@ -2130,12 +2323,15 @@
                                         } else {
                                             tAbsent += 1;
                                         }
-                                        tOT += ot; tAdv += adv;
-                                        const dayEarn = (dutyNumeric * rate) + (ot * (rate / 8));
-                                        tGross += dayEarn;
-                                        itemizedPresence[wId].totalOT += ot;
-                                        itemizedPresence[wId].netEarned += dayEarn;
                                     }
+                                    const effectiveDuty = dutyNumeric !== null ? dutyNumeric : 0;
+                                    tOT += ot; tAdv += adv;
+                                    const dayEarn = (effectiveDuty * rate) + (ot * (rate / 8));
+                                    tGross += dayEarn;
+                                    itemizedPresence[wId].totalOT += ot;
+                                    itemizedPresence[wId].grossEarned += dayEarn;
+                                    itemizedPresence[wId].totalAdv += adv;
+                                    itemizedPresence[wId].netEarned += (dayEarn - adv);
                                 }
                             });
                         });
@@ -2144,18 +2340,19 @@
                 
                 if (group.dpr) {
                     Object.entries(group.dpr).forEach(([dateStr, dData]) => {
+                        if (!dData) return;
                         const [d, m, y] = dateStr.split('-');
                         const recordDate = new Date(y, m - 1, d);
                         
                         if (recordDate >= startDate && recordDate <= endDate) {
-                            if (dData.matReceived) { Object.values(dData.matReceived).forEach(mat => { const key = `[IN] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
-                            if (dData.matConsumed) { Object.values(dData.matConsumed).forEach(mat => { const key = `[OUT] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
+                            if (dData.matReceived) { Object.values(dData.matReceived).forEach(mat => { if(!mat) return; const key = `[IN] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
+                            if (dData.matConsumed) { Object.values(dData.matConsumed).forEach(mat => { if(!mat) return; const key = `[OUT] ${mat.item} (${mat.unit})`; materials[key] = (materials[key] || 0) + (parseFloat(mat.qty) || 0); }); }
                             
                             dprLogsHtml += `
                                 <div style="background:var(--bg); border:1px solid var(--border); padding: 12px; border-radius: 8px; margin-bottom: 8px;">
                                    <div style="font-size:12px; font-weight:800; color:var(--primary); margin-bottom: 6px;">📅 Date: ${dateStr} | Weather: ${dData.weather || 'N/A'}</div>
                                    <div style="font-size:13px; line-height:1.5;">${dData.work || '<span style="color:var(--text-muted); font-style:italic;">No work details logged for this day.</span>'}</div>
-                                   ${dData.workStop === 'Yes' ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:6px;">⚠️ Work Stopped due to weather (${dData.rainStart} to${dData.rainEnd})</div>` : ''}
+                                   ${dData.workStop === 'Yes' ? `<div style="color:var(--danger); font-size:12px; font-weight:bold; margin-top:6px;">⚠️ Work Stopped due to weather (${dData.rainStart || 'N/A'} to ${dData.rainEnd || 'N/A'})</div>` : ''}
                                 </div>
                             `;
                         }
@@ -2163,7 +2360,7 @@
                 }
             });
 
-            lastReportData = { startDate: startDate.toLocaleDateString(), endDate: endDate.toLocaleDateString(), tPresent, tAbsent, tOT, tGross, tAdv, materials, itemizedPresence };
+            lastReportByType[type] = { startDate: startDate.toLocaleDateString(), endDate: endDate.toLocaleDateString(), tPresent, tAbsent, tOT, tGross, tAdv, materials, itemizedPresence };
 
             let matHtml = "";
             Object.keys(materials).forEach(k => {
@@ -2175,7 +2372,7 @@
 
             let tableRows = "";
             Object.values(itemizedPresence).forEach(wp => {
-                if(wp.daysPresent > 0 || wp.totalOT > 0) {
+                if(wp.daysPresent > 0 || wp.totalOT > 0 || wp.totalAdv > 0) {
                     tableRows += `<tr><td style="text-align:left; font-weight:bold;">${wp.name}</td><td style="text-align:left;">${wp.desig}</td><td>${wp.daysPresent.toFixed(1)}</td><td>${wp.totalOT.toFixed(1)}h</td><td>₹${wp.netEarned.toFixed(0)}</td></tr>`;
                 }
             });
@@ -2222,13 +2419,14 @@
     }
 
     function exportCustomReportExcel(type) {
-        if(!lastReportData) return showToast("Generate a report first.");
-        const ws_data = [["Global Industries - Detailed Report"], [`From: ${lastReportData.startDate} To: ${lastReportData.endDate}`], [], ["Worker Name", "Trade", "Present Days", "Total Overtime", "Net Earned"]];
-        Object.values(lastReportData.itemizedPresence).forEach(wp => {
-            if(wp.daysPresent > 0 || wp.totalOT > 0) ws_data.push([wp.name, wp.desig, wp.daysPresent, wp.totalOT, wp.netEarned]);
+        const repData = lastReportByType[type] || lastReportByType.range || lastReportByType.single;
+        if(!repData) return showToast("Generate a report first.");
+        const ws_data = [["Global Industries - Detailed Report"], [`From: ${repData.startDate} To: ${repData.endDate}`], [], ["Worker Name", "Trade", "Present Days", "Total Overtime", "Net Earned"]];
+        Object.values(repData.itemizedPresence).forEach(wp => {
+            if(wp.daysPresent > 0 || wp.totalOT > 0 || wp.totalAdv > 0) ws_data.push([wp.name, wp.desig, wp.daysPresent, wp.totalOT, Math.round(wp.netEarned)]);
         });
         const wb = XLSX.utils.book_new(); const ws = XLSX.utils.aoa_to_sheet(ws_data);
-        XLSX.utils.book_append_sheet(wb, ws, "Report"); XLSX.writeFile(wb, `GI_Report_${lastReportData.startDate}.xlsx`); showToast("Excel exported!");
+        XLSX.utils.book_append_sheet(wb, ws, "Report"); XLSX.writeFile(wb, `GI_Report_${repData.startDate}.xlsx`); showToast("Excel exported!");
     }
 
     function exportCustomReportPDF(containerId, fileName) {
@@ -2239,17 +2437,18 @@
     }
 
     function exportCustomReportWhatsApp() {
-        if(!lastReportData) return showToast("Generate a report first.");
-        let text = `*📈 GLOBAL INDUSTRIES - MASTER REPORT*\n*Period:* ${lastReportData.startDate} to ${lastReportData.endDate}\n\n*Summary:*`;
-        text += `\n- Present Days: ${lastReportData.tPresent.toFixed(1)}`;
-        text += `\n- Overtime: ${lastReportData.tOT.toFixed(1)} hrs`;
-        text += `\n- Net Pay: ₹${(lastReportData.tGross - lastReportData.tAdv).toFixed(0)}`;
+        const repData = lastReportByType.range || lastReportByType.single;
+        if(!repData) return showToast("Generate a report first.");
+        let text = `*📈 GLOBAL INDUSTRIES - MASTER REPORT*\n*Period:* ${repData.startDate} to ${repData.endDate}\n\n*Summary:*`;
+        text += `\n- Present Days: ${repData.tPresent.toFixed(1)}`;
+        text += `\n- Overtime: ${repData.tOT.toFixed(1)} hrs`;
+        text += `\n- Net Pay: ₹${(repData.tGross - repData.tAdv).toFixed(0)}`;
         window.open(`https://wa.me/?text=${encodeURIComponent(text)}`);
     }
 
     function openAddWorkerModal(type) { 
       const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
-      if(!canManage || isMasterRollup) { showToast("Permission denied. Supervisors, Incharges & Admins only."); return; }
+      if(!canManage || (isMasterRollup && type !== 'key_person')) { showToast("Switch to a specific group or unlock permissions."); return; }
       document.getElementById("edit-worker-type").value = type;
       document.getElementById("modal-worker-title").textContent = type === 'key_person' ? "Register Key Personnel" : "Register Worker"; 
       document.getElementById("wage-input-row").style.display = type === 'key_person' ? 'none' : 'flex'; 
@@ -2271,26 +2470,47 @@
     function saveWorker() {
       const type = document.getElementById("edit-worker-type").value;
       const id=document.getElementById("edit-worker-id").value, n=document.getElementById("w-name").value.trim(), p=document.getElementById("w-phone").value.trim(), d=document.getElementById("w-desig").value, r=parseFloat(document.getElementById("w-rate").value)||0, a=parseFloat(document.getElementById("w-adv").value)||0;
-      if (!n) return alert("Please enter full name"); 
-      if (type !== 'kp' && type !== 'key_person' && r <= 0) return alert("Wage rate must be greater than zero.");
+      if (!n) { showToast("Please enter full name."); return; } 
+      if (type !== 'kp' && type !== 'key_person' && r <= 0) { showToast("Wage rate must be greater than zero."); return; }
       
-      const arr = (type === 'key_person' || type === 'kp') ? appState.keyPersons : appState.workers;
-      if (id) { const w = arr.find(i => String(i.id) === String(id)); if(w){ w.name=n; w.phone=p; w.desig=d; if(type!=='kp'&&type!=='key_person'){ w.rate=r; appState.advances[w.id]=a; } } } 
-      else { const nId='id_'+Date.now(); if(type === 'key_person' || type === 'kp') arr.push({ id:nId, name:n, phone:p, desig:d }); else { arr.push({ id:nId, name:n, phone:p, desig:d, rate:r }); appState.advances[nId]=a; } }
-      saveState(); closeModal('worker-modal'); renderAll(); showToast("Profile saved");
+      const isKp = (type === 'key_person' || type === 'kp');
+      const arr = isKp ? appState.keyPersons : appState.workers;
+      if (id) { const w = arr.find(i => String(i.id) === String(id)); if(w){ w.name=n; w.phone=p; w.desig=d; if(!isKp){ w.rate=r; appState.advances[w.id]=a; } } } 
+      else { const nId='id_'+Date.now(); if(isKp) arr.push({ id:nId, name:n, phone:p, desig:d }); else { arr.push({ id:nId, name:n, phone:p, desig:d, rate:r }); appState.advances[nId]=a; } }
+      if (isKp && isMasterRollup) saveKeyPersonnelState(); else saveState();
+      closeModal('worker-modal'); renderAll(); showToast("Profile saved");
     }
 
     function deleteWorker(id, type) { 
-      if (confirm("Remove permanently?")) { 
-        if(type === 'kp') { appState.keyPersons = appState.keyPersons.filter(w => String(w.id) !== String(id)); delete appState.kpAttendance[id]; }
-        else { appState.workers = appState.workers.filter(w => String(w.id) !== String(id)); delete appState.attendance[id]; delete appState.advances[id]; }
-        saveState(); renderAll(); 
-      } 
+      showConfirmModal("Remove permanently?", () => {
+        if(type === 'kp') {
+          appState.keyPersons = appState.keyPersons.filter(w => String(w.id) !== String(id));
+          delete appState.kpAttendance[id];
+          Object.keys(appState.kpAttendance).forEach(mKey => {
+            if (appState.kpAttendance[mKey] && typeof appState.kpAttendance[mKey] === 'object') {
+              delete appState.kpAttendance[mKey][id];
+            }
+          });
+          if (isMasterRollup) saveKeyPersonnelState(); else saveState();
+        } else {
+          appState.workers = appState.workers.filter(w => String(w.id) !== String(id));
+          Object.keys(appState.attendance).forEach(mKey => {
+            if (appState.attendance[mKey]) delete appState.attendance[mKey][id];
+          });
+          delete appState.advances[id];
+          saveState();
+        }
+        renderAll();
+      }, "🗑️ Remove Profile");
     }
 
     function renderWorkerManagement() {
       const c = document.getElementById("worker-mgmt-body");
       const canManage = (userRole === 'admin' || userRole === 'incharge' || userRole === 'supervisor');
+      if (appState.workers.length === 0) {
+        c.innerHTML = `<div class="empty-state">No workers registered in this group yet.</div>`;
+        return;
+      }
       let htmlBuffer = "";
       
       appState.workers.forEach((w) => {
@@ -2338,8 +2558,7 @@
       appState.workers.forEach(w => {
         let tD = 0, tO = 0, tDA = 0, c = "";
         for (let d = 1; d <= currentMonthDays; d++) {
-          const monthAtt = appState.attendance[mKey] || {};
-          const r = (monthAtt[w.id] && monthAtt[w.id][d]) || { duty: null, ot: 0, adv: 0 };
+          const r = getWorkerAttendanceRecord(w.id, d);
           
           const dutyNumeric = parseDutyInput(r.duty);
           if (dutyNumeric !== null) {
@@ -2350,8 +2569,7 @@
           tDA += (r.adv || 0);
           dO[d] += (r.ot || 0);
           
-          const isEditable = checkAttendanceEditable(d);
-          const isLocked = isMasterRollup || (!isEditable && userRole !== 'admin');
+          const isLocked = isWorkerDayLocked(w.id, d);
           
           const p1 = (userRole !== 'viewer' && !isLocked)
             ? `onblur="setDailyDuty('${w.id}', ${d}, parseDutyInput(this.value), 'worker')"`
@@ -2476,10 +2694,15 @@
     function populateSlipWorkerSelect() {
         const select = document.getElementById("slip-worker-select");
         if(!select) return;
+        const prevVal = select.value;
         select.innerHTML = '<option value="">-- Select Worker --</option>';
         appState.workers.forEach(w => {
             select.innerHTML += `<option value="${w.id}">${w.name} (${w.desig})</option>`;
         });
+        if (prevVal && appState.workers.some(w => String(w.id) === String(prevVal))) {
+            select.value = prevVal;
+            renderWageSlip();
+        }
     }
 
     function renderWageSlip() {
@@ -2487,7 +2710,7 @@
         const container = document.getElementById("wage-slip-display");
         if(!wId) { container.innerHTML = ''; return; }
         
-        const w = appState.workers.find(x => x.id === wId);
+        const w = appState.workers.find(x => String(x.id) === String(wId));
         if(!w) return;
 
         const theme = document.getElementById("slip-theme-select").value;
@@ -2497,7 +2720,7 @@
         
         let tD=0, tO=0, tA=0;
         for(let d=1; d<=currentMonthDays; d++) { 
-            const r = monthAtt[wId] && monthAtt[wId][d] ? monthAtt[wId][d] : {duty: null, ot:0, adv:0}; 
+            const r = monthAtt[w.id] && monthAtt[w.id][d] ? monthAtt[w.id][d] : {duty: null, ot:0, adv:0}; 
             tD += (parseDutyInput(r.duty)||0); tO += (r.ot||0); tA += (r.adv||0); 
         }
         
@@ -2523,13 +2746,13 @@
                 <div style="display:flex; justify-content:space-between; margin-bottom: 20px;">
                     <strong>Trade:</strong> <span>${w.desig}</span>
                 </div>
-                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px;">
-                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Rate/Day</td><td style="text-align:right;">₹${rt}</td></tr>
-                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Total Days Present</td><td style="text-align:right;">${tD.toFixed(1)}</td></tr>
-                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Total Overtime</td><td style="text-align:right;">${tO.toFixed(1)} hrs</td></tr>
-                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0;">Gross Earnings</td><td style="text-align:right; font-weight:bold;">₹${gross.toFixed(0)}</td></tr>
-                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; color:var(--danger);">Total Advance Deduction</td><td style="text-align:right; color:var(--danger);">₹${totalAdv.toFixed(0)}</td></tr>
-                    <tr style="border-bottom: 2px solid ${themeBorder};"><td style="padding:12px 0; font-size:18px; font-weight:bold;">Net Payable</td><td style="text-align:right; font-size:18px; font-weight:bold; color:var(--primary);">₹${netPay.toFixed(0)}</td></tr>
+                <table style="width:100%; border-collapse: collapse; margin-bottom: 20px; color:${themeCol};">
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; text-align:left;">Rate/Day</td><td style="text-align:right;">₹${rt}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; text-align:left;">Total Days Present</td><td style="text-align:right;">${tD.toFixed(1)}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; text-align:left;">Total Overtime</td><td style="text-align:right;">${tO.toFixed(1)} hrs</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; text-align:left;">Gross Earnings</td><td style="text-align:right; font-weight:bold;">₹${gross.toFixed(0)}</td></tr>
+                    <tr style="border-bottom: 1px solid ${themeBorder};"><td style="padding:8px 0; text-align:left; color:#DC2626;">Total Advance Deduction</td><td style="text-align:right; color:#DC2626;">₹${totalAdv.toFixed(0)}</td></tr>
+                    <tr style="border-bottom: 2px solid ${themeBorder};"><td style="padding:12px 0; text-align:left; font-size:18px; font-weight:bold;">Net Payable</td><td style="text-align:right; font-size:18px; font-weight:bold; color:${themeCol};">₹${netPay.toFixed(0)}</td></tr>
                 </table>
                 <div style="text-align:center; font-size: 12px; margin-top: 40px; color: #64748b;">System Generated Slip - Global Industries Management Portal</div>
             </div>
